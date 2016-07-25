@@ -1,0 +1,25 @@
+{
+  "name": "heart-canvas",
+  "version": "1.0.0",
+  "description": "The heart graphic uses canvas.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack script.js dest/bundle.js --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/caojs/heart-canvas.git"
+  },
+  "keywords": [
+    "canvas",
+    "heart"
+  ],
+  "author": "caojs <caoo.dai@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/caojs/heart-canvas/issues"
+  },
+  "homepage": "https://github.com/caojs/heart-canvas#readme"
+}
