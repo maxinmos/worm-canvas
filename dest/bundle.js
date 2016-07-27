@@ -44,115 +44,14 @@
 /* 0 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var range = __webpack_require__(3);
-	var vector = __webpack_require__(1);
-	var engine = __webpack_require__(2);
+	var range = __webpack_require__(1);
+	var engine = __webpack_require__(3);
+	var utils = __webpack_require__(7);
+	var heart = __webpack_require__(4);
+	var worm = __webpack_require__(5);
 
 	var load = engine.load;
 	var getAnimationFrame = engine.getAnimationFrame;
-	var vec2d = vector.vec2d;
-	var toRad = vector.toRad;
-	var distance = vector.distance;
-
-	function roundRandom(min, max) {
-	  return Math.round(min + Math.random() * (max - min));
-	}
-
-	function increaseAngle(angle, alpha) {
-	  return (angle + alpha) % 360;
-	}
-
-	function pos(t, scale) {
-	  return {
-	    x: scale * Math.pow(Math.sin(t), 3),
-	    y: -scale / 4 * (3 * Math.cos(t) - 1.3 * Math.cos(2 * t) - 0.6 * Math.cos(3 * t) - 0.2 * Math.cos(4 * t))
-	  };
-	}
-
-	function heartPath(n, scale) {
-	  var step = toRad(360 / n);
-	  var angle = 0;
-	  return range(n).map(function() {
-	    angle += step;
-	    return pos(angle, scale);
-	  });
-	}
-
-	function renderPoint(ctx, x, y, r) {
-	  ctx.beginPath();
-	  ctx.arc(x, y, r, 0, toRad(40));
-	  ctx.closePath();
-	  ctx.fill();
-	};
-
-	function calculateDeltaVeclocity(start, end, speed) {
-	  return {
-	    dx: speed * (end.x - start.x) / distance(end.x, end.y, start.x, start.y),
-	    dy: speed * (end.y - start.y) / distance(end.x, end.y, start.x, start.y)
-	  };
-	}
-
-	function worm(path, n, x, y, dSpeed) {
-	  var nPath = path.length;
-	  var partials = [];
-	  var approaching = null;
-
-	  approaching = roundRandom(0, nPath - 1);
-
-	  var point = path[approaching];
-	  var p;
-	  var dV;
-	  for (i = 0; i < n; i++) {
-	    var p = {
-	      x: -i * 1.5,
-	      y: -i * 1.5
-	    };
-	    if (i === 0) {
-	      dV = calculateDeltaVeclocity(p, point, dSpeed);
-	      p.dx = dV.dx;
-	      p.dy = dV.dy;
-	    }
-	    partials[i] = p;
-	  }
-
-	  return function(ctx) {
-	    ctx.save();
-	    ctx.fillStyle = 'rgba(255, 255, 255, 1)';
-	    ctx.lineCap = 'round';
-	    ctx.lineJoin = 'round';
-	    ctx.translate(x, y);
-
-	    var point = path[approaching];
-	    var first = partials[0];
-	    var dV;
-	    first.x += first.dx;
-	    first.y += first.dy;
-	    if (distance(first.x, first.y, point.x, point.y) < 10) {
-
-	      approaching = Math.random() < 0.05 ?
-	        roundRandom(0, nPath - 1) :
-	        (approaching + 1) % nPath;
-
-	      point = path[approaching];
-	      dV = calculateDeltaVeclocity(first, point, dSpeed);
-	      first.dx = dV.dx;
-	      first.dy = dV.dy;
-	    }
-	    renderPoint(ctx, first.x, first.y, 4);
-
-	    var p;
-	    var next;
-	    for (var j = 0; j < n - 1; j++) {
-	      p = partials[j];
-	      next = partials[j + 1];
-	      next.x += (p.x - next.x) * 0.7;
-	      next.y += (p.y - next.y) * 0.7;
-	      renderPoint(ctx, next.x, next.y, 4);
-	    }
-
-	    ctx.restore();
-	  }
-	}
 
 	load(function () {
 	  var canvas = document.getElementById('canvas');
@@ -160,18 +59,21 @@
 	  var screenWidth = canvas.clientWidth;
 	  var screenHeight = canvas.clientHeight;
 
-	  var path = heartPath(30, 100);
-	  var w = range(30).map(function (i) {
-	    return worm(path, 10, screenWidth / 2, screenHeight / 2, 4);
+	  var path = heart(30, 200);
+	  var w = range(15).map(function (i) {
+	    return worm(path, 20, 0, 0, utils.random(1, 2));
 	  });
 
 	  (function loop() {
 	    getAnimationFrame(function () {
-	      ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+	      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
 	      ctx.fillRect(0, 0, screenWidth, screenHeight);
+	      ctx.save();
+	      ctx.translate(screenWidth / 2, screenHeight / 2);
 	      w.forEach(function(wr) {
 	        wr(ctx);
 	      });
+	      ctx.restore();
 	      loop();
 	    });
 	  })();
@@ -180,57 +82,6 @@
 
 /***/ },
 /* 1 */
-/***/ function(module, exports) {
-
-	function toRad(r) {
-	  return Math.PI * r / 180;
-	}
-
-	function distance(x1, y1, x2, y2) {
-	  return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-	}
-
-	function vec2d(length, rad) {
-	  return {
-	    y: Math.sin(rad) * length,
-	    x: Math.cos(rad) * length,
-	    angle: rad
-	  };
-	}
-
-	module.exports = {
-	  toRad: toRad,
-	  distance: distance,
-	  vec2d: vec2d
-	};
-
-
-/***/ },
-/* 2 */
-/***/ function(module, exports) {
-
-	var load = function(cb) {
-	  window.onload = cb;
-	};
-
-	var getAnimationFrame =
-	  window.requestAnimationFrame ||
-	  window.webkitRequestAnimationFrame ||
-	  window.mozRequestAnimationFrame ||
-	  window.oRequestAnimationFrame ||
-	  window.msRequestAnimationFrame ||
-	  function frame(callback) {
-	    window.setTimeout(callback, 16.6);
-	  };
-
-	module.exports = {
-	  load: load,
-	  getAnimationFrame: getAnimationFrame
-	};
-
-
-/***/ },
-/* 3 */
 /***/ function(module, exports) {
 
 	/**
@@ -687,6 +538,206 @@
 	var range = createRange();
 
 	module.exports = range;
+
+
+/***/ },
+/* 2 */,
+/* 3 */
+/***/ function(module, exports) {
+
+	var load = function(cb) {
+	  window.onload = cb;
+	};
+
+	var getAnimationFrame =
+	  window.requestAnimationFrame ||
+	  window.webkitRequestAnimationFrame ||
+	  window.mozRequestAnimationFrame ||
+	  window.oRequestAnimationFrame ||
+	  window.msRequestAnimationFrame ||
+	  function frame(callback) {
+	    window.setTimeout(callback, 16.6);
+	  };
+
+	module.exports = {
+	  load: load,
+	  getAnimationFrame: getAnimationFrame
+	};
+
+
+/***/ },
+/* 4 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var range = __webpack_require__(1);
+	var vector = __webpack_require__(6);
+
+	function pos(t, scale) {
+	  return {
+	    x: scale * Math.pow(Math.sin(t), 3),
+	    y: -scale / 4 * (3 * Math.cos(t) - 1.3 * Math.cos(2 * t) - 0.6 * Math.cos(3 * t) - 0.2 * Math.cos(4 * t))
+	  };
+	}
+
+	function heartPath(n, scale) {
+	  var step = vector.toRad(360 / n);
+	  var angle = 0;
+	  return range(n).map(function() {
+	    angle += step;
+	    return pos(angle, scale);
+	  });
+	}
+
+	module.exports = heartPath;
+
+
+/***/ },
+/* 5 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var range = __webpack_require__(1);
+	var vector = __webpack_require__(6);
+	var utils = __webpack_require__(7);
+
+	var toRad = vector.toRad;
+	var distance = vector.distance;
+	var random = utils.random;
+	var roundRandom = utils.roundRandom;
+
+
+	function calculateDeltaVeclocity(start, end, speed) {
+	  var far = distance(end, start);
+	  return {
+	    dx: speed * (end.x - start.x) / far,
+	    dy: speed * (end.y - start.y) / far
+	  };
+	}
+
+	function renderPoint(ctx, x, y, r) {
+	  ctx.beginPath();
+	  ctx.arc(x, y, r, 0, toRad(60));
+	  ctx.closePath();
+	  ctx.fill();
+	};
+
+	function worm(path, n, x, y, dSpeed) {
+	  var nPath = path.length;
+	  var partials = [];
+	  var approaching = roundRandom(0, nPath - 1);
+	  var point = path[approaching];
+	  var p;
+	  var dV;
+
+	  //TODO: add color to worm.
+	  range(n)
+	    .forEach(function(i) {
+	      var p = {
+	        x: x,
+	        y: y,
+	        radius: 4 - i/n
+	      };
+
+	      if (i === 0) {
+	        dV = calculateDeltaVeclocity(p, point, dSpeed);
+	        p.dx = dV.dx;
+	        p.dy = dV.dy;
+	        p.friction = Math.random() * 0.2 + 0.7;
+	      }
+
+	      partials[i] = p;
+	    });
+
+	  return function(ctx) {
+	    ctx.save();
+	    ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+	    ctx.lineCap = 'round';
+	    ctx.lineJoin = 'round';
+
+	    var point = path[approaching];
+	    var first = partials[0];
+	    var dV = calculateDeltaVeclocity(first, point, dSpeed);
+	    first.x += first.dx;
+	    first.y += first.dy;
+	    first.dx = (first.dx + dV.dx) * first.friction;
+	    first.dy = (first.dy + dV.dy) * first.friction;
+
+	    // FIXME: find out the relation of A and formula
+	    if (distance(first, point) < /* A */15) {
+	      approaching = Math.random() > 0.96 ?
+	        roundRandom(0, nPath - 1) :
+	        Math.random() > 0.96 ?
+	          (approaching - 1) :
+	          (approaching + 1) % nPath;
+
+	      if (approaching < 0) approaching += nPath;
+	    }
+	    renderPoint(ctx, first.x, first.y, first.radius);
+
+	    var p;
+	    var next;
+	    for (var j = 0; j < n - 1; j++) {
+	      p = partials[j];
+	      next = partials[j + 1];
+	      next.x += (p.x - next.x) * 0.7;
+	      next.y += (p.y - next.y) * 0.7;
+	      renderPoint(ctx, next.x, next.y, next.radius);
+	    }
+
+	    ctx.restore();
+	  }
+	}
+
+	module.exports = worm;
+
+
+/***/ },
+/* 6 */
+/***/ function(module, exports) {
+
+	function toRad(r) {
+	  return Math.PI * r / 180;
+	}
+
+	function distance(p1, p2) {
+	  return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+	}
+
+	function vec2d(length, rad) {
+	  return {
+	    y: Math.sin(rad) * length,
+	    x: Math.cos(rad) * length,
+	    angle: rad
+	  };
+	}
+
+	module.exports = {
+	  toRad: toRad,
+	  distance: distance,
+	  vec2d: vec2d
+	};
+
+
+/***/ },
+/* 7 */
+/***/ function(module, exports) {
+
+	function random(min, max) {
+	  return min + Math.random() * (max - min);
+	}
+
+	function roundRandom(min, max) {
+	  return Math.round(random(min, max));
+	}
+
+	function increaseAngle(angle, alpha) {
+	  return (angle + alpha) % 360;
+	}
+
+	module.exports = {
+	  random: random,
+	  roundRandom: roundRandom,
+	  increaseAngle: increaseAngle
+	};
 
 
 /***/ }
