@@ -40,12 +40,14 @@
 /******/ 	return __webpack_require__(0);
 /******/ })
 /************************************************************************/
-/******/ ([
-/* 0 */
+/******/ ({
+
+/***/ 0:
 /***/ function(module, exports, __webpack_require__) {
 
-	var colorify = __webpack_require__(1);
+	var tinycolor = __webpack_require__(378);
 	var range = __webpack_require__(13);
+	var rx = __webpack_require__(377);
 	var engine = __webpack_require__(14);
 	var heart = __webpack_require__(15);
 	var utils = __webpack_require__(17);
@@ -55,17 +57,38 @@
 	var getAnimationFrame = engine.getAnimationFrame;
 	var random = utils.random;
 
+	function randomSpin(color) {
+	  return tinycolor(color)
+	  .spin(random(0, 40))
+	  .toString();
+	}
+
+	function bornWorms(n, color, path) {
+	  return range(n)
+	    .map(function() {
+	      var cool = randomSpin(color);
+	      return worm(0, 0, 30, random(1.5, 2), cool, path);
+	    });
+	}
+
 	load(function () {
 	  var canvas = document.getElementById('canvas');
 	  var ctx = canvas.getContext('2d');
-	  var screenWidth = canvas.clientWidth;
-	  var screenHeight = canvas.clientHeight;
+	  var screenWidth = window.innerWidth;
+	  var screenHeight = window.innerHeight;
 
-	  var path = heart(30, 150);
-	  var worms = range(20)
-	    .map(function (i) {
-	      var color = colorify('blue').rotate(random(0, 40)).hslString();
-	      return worm(0, 0, 20, random(1, 2.5), color, path);
+	  var path = heart(30, 200);
+	  var worms = bornWorms(20, 'red', path);
+
+	  canvas.width = screenWidth;
+	  canvas.height = screenHeight;
+
+	  rx.fromEvent(document.getElementById('color'), 'change')
+	    .subscribe(function(event) {
+	      worms.forEach(function(w) {
+	        var cool = randomSpin(event.target.value);
+	        w.color(cool);
+	      });
 	    });
 
 	  (function loop() {
@@ -74,7 +97,7 @@
 	      ctx.fillRect(0, 0, screenWidth, screenHeight);
 	      ctx.save();
 	      ctx.translate(screenWidth / 2, screenHeight / 2);
-	      worms.forEach(function(w) { w(ctx); });
+	      worms.forEach(function(w) { w.draw(ctx); });
 	      ctx.restore();
 	      loop();
 	    });
@@ -83,3923 +106,8 @@
 
 
 /***/ },
-/* 1 */
-/***/ function(module, exports, __webpack_require__) {
 
-	/* MIT license */
-	var clone = __webpack_require__(2);
-	var convert = __webpack_require__(7);
-	var string = __webpack_require__(11);
-
-	var Color = function (obj) {
-		if (obj instanceof Color) {
-			return obj;
-		}
-		if (!(this instanceof Color)) {
-			return new Color(obj);
-		}
-
-		this.values = {
-			rgb: [0, 0, 0],
-			hsl: [0, 0, 0],
-			hsv: [0, 0, 0],
-			hwb: [0, 0, 0],
-			cmyk: [0, 0, 0, 0],
-			alpha: 1
-		};
-
-		// parse Color() argument
-		var vals;
-		if (typeof obj === 'string') {
-			vals = string.getRgba(obj);
-			if (vals) {
-				this.setValues('rgb', vals);
-			} else if (vals = string.getHsla(obj)) {
-				this.setValues('hsl', vals);
-			} else if (vals = string.getHwb(obj)) {
-				this.setValues('hwb', vals);
-			} else {
-				throw new Error('Unable to parse color from string "' + obj + '"');
-			}
-		} else if (typeof obj === 'object') {
-			vals = obj;
-			if (vals.r !== undefined || vals.red !== undefined) {
-				this.setValues('rgb', vals);
-			} else if (vals.l !== undefined || vals.lightness !== undefined) {
-				this.setValues('hsl', vals);
-			} else if (vals.v !== undefined || vals.value !== undefined) {
-				this.setValues('hsv', vals);
-			} else if (vals.w !== undefined || vals.whiteness !== undefined) {
-				this.setValues('hwb', vals);
-			} else if (vals.c !== undefined || vals.cyan !== undefined) {
-				this.setValues('cmyk', vals);
-			} else {
-				throw new Error('Unable to parse color from object ' + JSON.stringify(obj));
-			}
-		}
-	};
-
-	Color.prototype = {
-		rgb: function () {
-			return this.setSpace('rgb', arguments);
-		},
-		hsl: function () {
-			return this.setSpace('hsl', arguments);
-		},
-		hsv: function () {
-			return this.setSpace('hsv', arguments);
-		},
-		hwb: function () {
-			return this.setSpace('hwb', arguments);
-		},
-		cmyk: function () {
-			return this.setSpace('cmyk', arguments);
-		},
-
-		rgbArray: function () {
-			return this.values.rgb;
-		},
-		hslArray: function () {
-			return this.values.hsl;
-		},
-		hsvArray: function () {
-			return this.values.hsv;
-		},
-		hwbArray: function () {
-			if (this.values.alpha !== 1) {
-				return this.values.hwb.concat([this.values.alpha]);
-			}
-			return this.values.hwb;
-		},
-		cmykArray: function () {
-			return this.values.cmyk;
-		},
-		rgbaArray: function () {
-			var rgb = this.values.rgb;
-			return rgb.concat([this.values.alpha]);
-		},
-		hslaArray: function () {
-			var hsl = this.values.hsl;
-			return hsl.concat([this.values.alpha]);
-		},
-		alpha: function (val) {
-			if (val === undefined) {
-				return this.values.alpha;
-			}
-			this.setValues('alpha', val);
-			return this;
-		},
-
-		red: function (val) {
-			return this.setChannel('rgb', 0, val);
-		},
-		green: function (val) {
-			return this.setChannel('rgb', 1, val);
-		},
-		blue: function (val) {
-			return this.setChannel('rgb', 2, val);
-		},
-		hue: function (val) {
-			if (val) {
-				val %= 360;
-				val = val < 0 ? 360 + val : val;
-			}
-			return this.setChannel('hsl', 0, val);
-		},
-		saturation: function (val) {
-			return this.setChannel('hsl', 1, val);
-		},
-		lightness: function (val) {
-			return this.setChannel('hsl', 2, val);
-		},
-		saturationv: function (val) {
-			return this.setChannel('hsv', 1, val);
-		},
-		whiteness: function (val) {
-			return this.setChannel('hwb', 1, val);
-		},
-		blackness: function (val) {
-			return this.setChannel('hwb', 2, val);
-		},
-		value: function (val) {
-			return this.setChannel('hsv', 2, val);
-		},
-		cyan: function (val) {
-			return this.setChannel('cmyk', 0, val);
-		},
-		magenta: function (val) {
-			return this.setChannel('cmyk', 1, val);
-		},
-		yellow: function (val) {
-			return this.setChannel('cmyk', 2, val);
-		},
-		black: function (val) {
-			return this.setChannel('cmyk', 3, val);
-		},
-
-		hexString: function () {
-			return string.hexString(this.values.rgb);
-		},
-		rgbString: function () {
-			return string.rgbString(this.values.rgb, this.values.alpha);
-		},
-		rgbaString: function () {
-			return string.rgbaString(this.values.rgb, this.values.alpha);
-		},
-		percentString: function () {
-			return string.percentString(this.values.rgb, this.values.alpha);
-		},
-		hslString: function () {
-			return string.hslString(this.values.hsl, this.values.alpha);
-		},
-		hslaString: function () {
-			return string.hslaString(this.values.hsl, this.values.alpha);
-		},
-		hwbString: function () {
-			return string.hwbString(this.values.hwb, this.values.alpha);
-		},
-		keyword: function () {
-			return string.keyword(this.values.rgb, this.values.alpha);
-		},
-
-		rgbNumber: function () {
-			return (this.values.rgb[0] << 16) | (this.values.rgb[1] << 8) | this.values.rgb[2];
-		},
-
-		luminosity: function () {
-			// http://www.w3.org/TR/WCAG20/#relativeluminancedef
-			var rgb = this.values.rgb;
-			var lum = [];
-			for (var i = 0; i < rgb.length; i++) {
-				var chan = rgb[i] / 255;
-				lum[i] = (chan <= 0.03928) ? chan / 12.92 : Math.pow(((chan + 0.055) / 1.055), 2.4);
-			}
-			return 0.2126 * lum[0] + 0.7152 * lum[1] + 0.0722 * lum[2];
-		},
-
-		contrast: function (color2) {
-			// http://www.w3.org/TR/WCAG20/#contrast-ratiodef
-			var lum1 = this.luminosity();
-			var lum2 = color2.luminosity();
-			if (lum1 > lum2) {
-				return (lum1 + 0.05) / (lum2 + 0.05);
-			}
-			return (lum2 + 0.05) / (lum1 + 0.05);
-		},
-
-		level: function (color2) {
-			var contrastRatio = this.contrast(color2);
-			if (contrastRatio >= 7.1) {
-				return 'AAA';
-			}
-
-			return (contrastRatio >= 4.5) ? 'AA' : '';
-		},
-
-		dark: function () {
-			// YIQ equation from http://24ways.org/2010/calculating-color-contrast
-			var rgb = this.values.rgb;
-			var yiq = (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000;
-			return yiq < 128;
-		},
-
-		light: function () {
-			return !this.dark();
-		},
-
-		negate: function () {
-			var rgb = [];
-			for (var i = 0; i < 3; i++) {
-				rgb[i] = 255 - this.values.rgb[i];
-			}
-			this.setValues('rgb', rgb);
-			return this;
-		},
-
-		lighten: function (ratio) {
-			this.values.hsl[2] += this.values.hsl[2] * ratio;
-			this.setValues('hsl', this.values.hsl);
-			return this;
-		},
-
-		darken: function (ratio) {
-			this.values.hsl[2] -= this.values.hsl[2] * ratio;
-			this.setValues('hsl', this.values.hsl);
-			return this;
-		},
-
-		saturate: function (ratio) {
-			this.values.hsl[1] += this.values.hsl[1] * ratio;
-			this.setValues('hsl', this.values.hsl);
-			return this;
-		},
-
-		desaturate: function (ratio) {
-			this.values.hsl[1] -= this.values.hsl[1] * ratio;
-			this.setValues('hsl', this.values.hsl);
-			return this;
-		},
-
-		whiten: function (ratio) {
-			this.values.hwb[1] += this.values.hwb[1] * ratio;
-			this.setValues('hwb', this.values.hwb);
-			return this;
-		},
-
-		blacken: function (ratio) {
-			this.values.hwb[2] += this.values.hwb[2] * ratio;
-			this.setValues('hwb', this.values.hwb);
-			return this;
-		},
-
-		greyscale: function () {
-			var rgb = this.values.rgb;
-			// http://en.wikipedia.org/wiki/Grayscale#Converting_color_to_grayscale
-			var val = rgb[0] * 0.3 + rgb[1] * 0.59 + rgb[2] * 0.11;
-			this.setValues('rgb', [val, val, val]);
-			return this;
-		},
-
-		clearer: function (ratio) {
-			this.setValues('alpha', this.values.alpha - (this.values.alpha * ratio));
-			return this;
-		},
-
-		opaquer: function (ratio) {
-			this.setValues('alpha', this.values.alpha + (this.values.alpha * ratio));
-			return this;
-		},
-
-		rotate: function (degrees) {
-			var hue = this.values.hsl[0];
-			hue = (hue + degrees) % 360;
-			hue = hue < 0 ? 360 + hue : hue;
-			this.values.hsl[0] = hue;
-			this.setValues('hsl', this.values.hsl);
-			return this;
-		},
-
-		/**
-		 * Ported from sass implementation in C
-		 * https://github.com/sass/libsass/blob/0e6b4a2850092356aa3ece07c6b249f0221caced/functions.cpp#L209
-		 */
-		mix: function (mixinColor, weight) {
-			var color1 = this;
-			var color2 = mixinColor;
-			var p = weight === undefined ? 0.5 : weight;
-
-			var w = 2 * p - 1;
-			var a = color1.alpha() - color2.alpha();
-
-			var w1 = (((w * a === -1) ? w : (w + a) / (1 + w * a)) + 1) / 2.0;
-			var w2 = 1 - w1;
-
-			return this
-				.rgb(
-					w1 * color1.red() + w2 * color2.red(),
-					w1 * color1.green() + w2 * color2.green(),
-					w1 * color1.blue() + w2 * color2.blue()
-				)
-				.alpha(color1.alpha() * p + color2.alpha() * (1 - p));
-		},
-
-		toJSON: function () {
-			return this.rgb();
-		},
-
-		clone: function () {
-			var col = new Color();
-			col.values = clone(this.values);
-			return col;
-		}
-	};
-
-	Color.prototype.getValues = function (space) {
-		var vals = {};
-
-		for (var i = 0; i < space.length; i++) {
-			vals[space.charAt(i)] = this.values[space][i];
-		}
-
-		if (this.values.alpha !== 1) {
-			vals.a = this.values.alpha;
-		}
-
-		// {r: 255, g: 255, b: 255, a: 0.4}
-		return vals;
-	};
-
-	Color.prototype.setValues = function (space, vals) {
-		var spaces = {
-			rgb: ['red', 'green', 'blue'],
-			hsl: ['hue', 'saturation', 'lightness'],
-			hsv: ['hue', 'saturation', 'value'],
-			hwb: ['hue', 'whiteness', 'blackness'],
-			cmyk: ['cyan', 'magenta', 'yellow', 'black']
-		};
-
-		var maxes = {
-			rgb: [255, 255, 255],
-			hsl: [360, 100, 100],
-			hsv: [360, 100, 100],
-			hwb: [360, 100, 100],
-			cmyk: [100, 100, 100, 100]
-		};
-
-		var i;
-		var alpha = 1;
-		if (space === 'alpha') {
-			alpha = vals;
-		} else if (vals.length) {
-			// [10, 10, 10]
-			this.values[space] = vals.slice(0, space.length);
-			alpha = vals[space.length];
-		} else if (vals[space.charAt(0)] !== undefined) {
-			// {r: 10, g: 10, b: 10}
-			for (i = 0; i < space.length; i++) {
-				this.values[space][i] = vals[space.charAt(i)];
-			}
-
-			alpha = vals.a;
-		} else if (vals[spaces[space][0]] !== undefined) {
-			// {red: 10, green: 10, blue: 10}
-			var chans = spaces[space];
-
-			for (i = 0; i < space.length; i++) {
-				this.values[space][i] = vals[chans[i]];
-			}
-
-			alpha = vals.alpha;
-		}
-
-		this.values.alpha = Math.max(0, Math.min(1, (alpha === undefined ? this.values.alpha : alpha)));
-
-		if (space === 'alpha') {
-			return false;
-		}
-
-		var capped;
-
-		// cap values of the space prior converting all values
-		for (i = 0; i < space.length; i++) {
-			capped = Math.max(0, Math.min(maxes[space][i], this.values[space][i]));
-			this.values[space][i] = Math.round(capped);
-		}
-
-		// convert to all the other color spaces
-		for (var sname in spaces) {
-			if (sname !== space) {
-				this.values[sname] = convert[space][sname](this.values[space]);
-			}
-
-			// cap values
-			for (i = 0; i < sname.length; i++) {
-				capped = Math.max(0, Math.min(maxes[sname][i], this.values[sname][i]));
-				this.values[sname][i] = Math.round(capped);
-			}
-		}
-
-		return true;
-	};
-
-	Color.prototype.setSpace = function (space, args) {
-		var vals = args[0];
-
-		if (vals === undefined) {
-			// color.rgb()
-			return this.getValues(space);
-		}
-
-		// color.rgb(10, 10, 10)
-		if (typeof vals === 'number') {
-			vals = Array.prototype.slice.call(args);
-		}
-
-		this.setValues(space, vals);
-		return this;
-	};
-
-	Color.prototype.setChannel = function (space, index, val) {
-		if (val === undefined) {
-			// color.red()
-			return this.values[space][index];
-		} else if (val === this.values[space][index]) {
-			// color.red(color.red())
-			return this;
-		}
-
-		// color.red(100)
-		this.values[space][index] = val;
-		this.setValues(space, this.values[space]);
-
-		return this;
-	};
-
-	module.exports = Color;
-
-
-/***/ },
-/* 2 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(Buffer) {var clone = (function() {
-	'use strict';
-
-	/**
-	 * Clones (copies) an Object using deep copying.
-	 *
-	 * This function supports circular references by default, but if you are certain
-	 * there are no circular references in your object, you can save some CPU time
-	 * by calling clone(obj, false).
-	 *
-	 * Caution: if `circular` is false and `parent` contains circular references,
-	 * your program may enter an infinite loop and crash.
-	 *
-	 * @param `parent` - the object to be cloned
-	 * @param `circular` - set to true if the object to be cloned may contain
-	 *    circular references. (optional - true by default)
-	 * @param `depth` - set to a number if the object is only to be cloned to
-	 *    a particular depth. (optional - defaults to Infinity)
-	 * @param `prototype` - sets the prototype to be used when cloning an object.
-	 *    (optional - defaults to parent prototype).
-	*/
-	function clone(parent, circular, depth, prototype) {
-	  var filter;
-	  if (typeof circular === 'object') {
-	    depth = circular.depth;
-	    prototype = circular.prototype;
-	    filter = circular.filter;
-	    circular = circular.circular
-	  }
-	  // maintain two arrays for circular references, where corresponding parents
-	  // and children have the same index
-	  var allParents = [];
-	  var allChildren = [];
-
-	  var useBuffer = typeof Buffer != 'undefined';
-
-	  if (typeof circular == 'undefined')
-	    circular = true;
-
-	  if (typeof depth == 'undefined')
-	    depth = Infinity;
-
-	  // recurse this function so we don't reset allParents and allChildren
-	  function _clone(parent, depth) {
-	    // cloning null always returns null
-	    if (parent === null)
-	      return null;
-
-	    if (depth == 0)
-	      return parent;
-
-	    var child;
-	    var proto;
-	    if (typeof parent != 'object') {
-	      return parent;
-	    }
-
-	    if (clone.__isArray(parent)) {
-	      child = [];
-	    } else if (clone.__isRegExp(parent)) {
-	      child = new RegExp(parent.source, __getRegExpFlags(parent));
-	      if (parent.lastIndex) child.lastIndex = parent.lastIndex;
-	    } else if (clone.__isDate(parent)) {
-	      child = new Date(parent.getTime());
-	    } else if (useBuffer && Buffer.isBuffer(parent)) {
-	      child = new Buffer(parent.length);
-	      parent.copy(child);
-	      return child;
-	    } else {
-	      if (typeof prototype == 'undefined') {
-	        proto = Object.getPrototypeOf(parent);
-	        child = Object.create(proto);
-	      }
-	      else {
-	        child = Object.create(prototype);
-	        proto = prototype;
-	      }
-	    }
-
-	    if (circular) {
-	      var index = allParents.indexOf(parent);
-
-	      if (index != -1) {
-	        return allChildren[index];
-	      }
-	      allParents.push(parent);
-	      allChildren.push(child);
-	    }
-
-	    for (var i in parent) {
-	      var attrs;
-	      if (proto) {
-	        attrs = Object.getOwnPropertyDescriptor(proto, i);
-	      }
-
-	      if (attrs && attrs.set == null) {
-	        continue;
-	      }
-	      child[i] = _clone(parent[i], depth - 1);
-	    }
-
-	    return child;
-	  }
-
-	  return _clone(parent, depth);
-	}
-
-	/**
-	 * Simple flat clone using prototype, accepts only objects, usefull for property
-	 * override on FLAT configuration object (no nested props).
-	 *
-	 * USE WITH CAUTION! This may not behave as you wish if you do not know how this
-	 * works.
-	 */
-	clone.clonePrototype = function clonePrototype(parent) {
-	  if (parent === null)
-	    return null;
-
-	  var c = function () {};
-	  c.prototype = parent;
-	  return new c();
-	};
-
-	// private utility functions
-
-	function __objToStr(o) {
-	  return Object.prototype.toString.call(o);
-	};
-	clone.__objToStr = __objToStr;
-
-	function __isDate(o) {
-	  return typeof o === 'object' && __objToStr(o) === '[object Date]';
-	};
-	clone.__isDate = __isDate;
-
-	function __isArray(o) {
-	  return typeof o === 'object' && __objToStr(o) === '[object Array]';
-	};
-	clone.__isArray = __isArray;
-
-	function __isRegExp(o) {
-	  return typeof o === 'object' && __objToStr(o) === '[object RegExp]';
-	};
-	clone.__isRegExp = __isRegExp;
-
-	function __getRegExpFlags(re) {
-	  var flags = '';
-	  if (re.global) flags += 'g';
-	  if (re.ignoreCase) flags += 'i';
-	  if (re.multiline) flags += 'm';
-	  return flags;
-	};
-	clone.__getRegExpFlags = __getRegExpFlags;
-
-	return clone;
-	})();
-
-	if (typeof module === 'object' && module.exports) {
-	  module.exports = clone;
-	}
-
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3).Buffer))
-
-/***/ },
-/* 3 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(Buffer, global) {/*!
-	 * The buffer module from node.js, for the browser.
-	 *
-	 * @author   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
-	 * @license  MIT
-	 */
-	/* eslint-disable no-proto */
-
-	'use strict'
-
-	var base64 = __webpack_require__(4)
-	var ieee754 = __webpack_require__(5)
-	var isArray = __webpack_require__(6)
-
-	exports.Buffer = Buffer
-	exports.SlowBuffer = SlowBuffer
-	exports.INSPECT_MAX_BYTES = 50
-	Buffer.poolSize = 8192 // not used by this implementation
-
-	var rootParent = {}
-
-	/**
-	 * If `Buffer.TYPED_ARRAY_SUPPORT`:
-	 *   === true    Use Uint8Array implementation (fastest)
-	 *   === false   Use Object implementation (most compatible, even IE6)
-	 *
-	 * Browsers that support typed arrays are IE 10+, Firefox 4+, Chrome 7+, Safari 5.1+,
-	 * Opera 11.6+, iOS 4.2+.
-	 *
-	 * Due to various browser bugs, sometimes the Object implementation will be used even
-	 * when the browser supports typed arrays.
-	 *
-	 * Note:
-	 *
-	 *   - Firefox 4-29 lacks support for adding new properties to `Uint8Array` instances,
-	 *     See: https://bugzilla.mozilla.org/show_bug.cgi?id=695438.
-	 *
-	 *   - Safari 5-7 lacks support for changing the `Object.prototype.constructor` property
-	 *     on objects.
-	 *
-	 *   - Chrome 9-10 is missing the `TypedArray.prototype.subarray` function.
-	 *
-	 *   - IE10 has a broken `TypedArray.prototype.subarray` function which returns arrays of
-	 *     incorrect length in some situations.
-
-	 * We detect these buggy browsers and set `Buffer.TYPED_ARRAY_SUPPORT` to `false` so they
-	 * get the Object implementation, which is slower but behaves correctly.
-	 */
-	Buffer.TYPED_ARRAY_SUPPORT = global.TYPED_ARRAY_SUPPORT !== undefined
-	  ? global.TYPED_ARRAY_SUPPORT
-	  : typedArraySupport()
-
-	function typedArraySupport () {
-	  function Bar () {}
-	  try {
-	    var arr = new Uint8Array(1)
-	    arr.foo = function () { return 42 }
-	    arr.constructor = Bar
-	    return arr.foo() === 42 && // typed array instances can be augmented
-	        arr.constructor === Bar && // constructor can be set
-	        typeof arr.subarray === 'function' && // chrome 9-10 lack `subarray`
-	        arr.subarray(1, 1).byteLength === 0 // ie10 has broken `subarray`
-	  } catch (e) {
-	    return false
-	  }
-	}
-
-	function kMaxLength () {
-	  return Buffer.TYPED_ARRAY_SUPPORT
-	    ? 0x7fffffff
-	    : 0x3fffffff
-	}
-
-	/**
-	 * Class: Buffer
-	 * =============
-	 *
-	 * The Buffer constructor returns instances of `Uint8Array` that are augmented
-	 * with function properties for all the node `Buffer` API functions. We use
-	 * `Uint8Array` so that square bracket notation works as expected -- it returns
-	 * a single octet.
-	 *
-	 * By augmenting the instances, we can avoid modifying the `Uint8Array`
-	 * prototype.
-	 */
-	function Buffer (arg) {
-	  if (!(this instanceof Buffer)) {
-	    // Avoid going through an ArgumentsAdaptorTrampoline in the common case.
-	    if (arguments.length > 1) return new Buffer(arg, arguments[1])
-	    return new Buffer(arg)
-	  }
-
-	  if (!Buffer.TYPED_ARRAY_SUPPORT) {
-	    this.length = 0
-	    this.parent = undefined
-	  }
-
-	  // Common case.
-	  if (typeof arg === 'number') {
-	    return fromNumber(this, arg)
-	  }
-
-	  // Slightly less common case.
-	  if (typeof arg === 'string') {
-	    return fromString(this, arg, arguments.length > 1 ? arguments[1] : 'utf8')
-	  }
-
-	  // Unusual.
-	  return fromObject(this, arg)
-	}
-
-	function fromNumber (that, length) {
-	  that = allocate(that, length < 0 ? 0 : checked(length) | 0)
-	  if (!Buffer.TYPED_ARRAY_SUPPORT) {
-	    for (var i = 0; i < length; i++) {
-	      that[i] = 0
-	    }
-	  }
-	  return that
-	}
-
-	function fromString (that, string, encoding) {
-	  if (typeof encoding !== 'string' || encoding === '') encoding = 'utf8'
-
-	  // Assumption: byteLength() return value is always < kMaxLength.
-	  var length = byteLength(string, encoding) | 0
-	  that = allocate(that, length)
-
-	  that.write(string, encoding)
-	  return that
-	}
-
-	function fromObject (that, object) {
-	  if (Buffer.isBuffer(object)) return fromBuffer(that, object)
-
-	  if (isArray(object)) return fromArray(that, object)
-
-	  if (object == null) {
-	    throw new TypeError('must start with number, buffer, array or string')
-	  }
-
-	  if (typeof ArrayBuffer !== 'undefined') {
-	    if (object.buffer instanceof ArrayBuffer) {
-	      return fromTypedArray(that, object)
-	    }
-	    if (object instanceof ArrayBuffer) {
-	      return fromArrayBuffer(that, object)
-	    }
-	  }
-
-	  if (object.length) return fromArrayLike(that, object)
-
-	  return fromJsonObject(that, object)
-	}
-
-	function fromBuffer (that, buffer) {
-	  var length = checked(buffer.length) | 0
-	  that = allocate(that, length)
-	  buffer.copy(that, 0, 0, length)
-	  return that
-	}
-
-	function fromArray (that, array) {
-	  var length = checked(array.length) | 0
-	  that = allocate(that, length)
-	  for (var i = 0; i < length; i += 1) {
-	    that[i] = array[i] & 255
-	  }
-	  return that
-	}
-
-	// Duplicate of fromArray() to keep fromArray() monomorphic.
-	function fromTypedArray (that, array) {
-	  var length = checked(array.length) | 0
-	  that = allocate(that, length)
-	  // Truncating the elements is probably not what people expect from typed
-	  // arrays with BYTES_PER_ELEMENT > 1 but it's compatible with the behavior
-	  // of the old Buffer constructor.
-	  for (var i = 0; i < length; i += 1) {
-	    that[i] = array[i] & 255
-	  }
-	  return that
-	}
-
-	function fromArrayBuffer (that, array) {
-	  if (Buffer.TYPED_ARRAY_SUPPORT) {
-	    // Return an augmented `Uint8Array` instance, for best performance
-	    array.byteLength
-	    that = Buffer._augment(new Uint8Array(array))
-	  } else {
-	    // Fallback: Return an object instance of the Buffer class
-	    that = fromTypedArray(that, new Uint8Array(array))
-	  }
-	  return that
-	}
-
-	function fromArrayLike (that, array) {
-	  var length = checked(array.length) | 0
-	  that = allocate(that, length)
-	  for (var i = 0; i < length; i += 1) {
-	    that[i] = array[i] & 255
-	  }
-	  return that
-	}
-
-	// Deserialize { type: 'Buffer', data: [1,2,3,...] } into a Buffer object.
-	// Returns a zero-length buffer for inputs that don't conform to the spec.
-	function fromJsonObject (that, object) {
-	  var array
-	  var length = 0
-
-	  if (object.type === 'Buffer' && isArray(object.data)) {
-	    array = object.data
-	    length = checked(array.length) | 0
-	  }
-	  that = allocate(that, length)
-
-	  for (var i = 0; i < length; i += 1) {
-	    that[i] = array[i] & 255
-	  }
-	  return that
-	}
-
-	if (Buffer.TYPED_ARRAY_SUPPORT) {
-	  Buffer.prototype.__proto__ = Uint8Array.prototype
-	  Buffer.__proto__ = Uint8Array
-	} else {
-	  // pre-set for values that may exist in the future
-	  Buffer.prototype.length = undefined
-	  Buffer.prototype.parent = undefined
-	}
-
-	function allocate (that, length) {
-	  if (Buffer.TYPED_ARRAY_SUPPORT) {
-	    // Return an augmented `Uint8Array` instance, for best performance
-	    that = Buffer._augment(new Uint8Array(length))
-	    that.__proto__ = Buffer.prototype
-	  } else {
-	    // Fallback: Return an object instance of the Buffer class
-	    that.length = length
-	    that._isBuffer = true
-	  }
-
-	  var fromPool = length !== 0 && length <= Buffer.poolSize >>> 1
-	  if (fromPool) that.parent = rootParent
-
-	  return that
-	}
-
-	function checked (length) {
-	  // Note: cannot use `length < kMaxLength` here because that fails when
-	  // length is NaN (which is otherwise coerced to zero.)
-	  if (length >= kMaxLength()) {
-	    throw new RangeError('Attempt to allocate Buffer larger than maximum ' +
-	                         'size: 0x' + kMaxLength().toString(16) + ' bytes')
-	  }
-	  return length | 0
-	}
-
-	function SlowBuffer (subject, encoding) {
-	  if (!(this instanceof SlowBuffer)) return new SlowBuffer(subject, encoding)
-
-	  var buf = new Buffer(subject, encoding)
-	  delete buf.parent
-	  return buf
-	}
-
-	Buffer.isBuffer = function isBuffer (b) {
-	  return !!(b != null && b._isBuffer)
-	}
-
-	Buffer.compare = function compare (a, b) {
-	  if (!Buffer.isBuffer(a) || !Buffer.isBuffer(b)) {
-	    throw new TypeError('Arguments must be Buffers')
-	  }
-
-	  if (a === b) return 0
-
-	  var x = a.length
-	  var y = b.length
-
-	  var i = 0
-	  var len = Math.min(x, y)
-	  while (i < len) {
-	    if (a[i] !== b[i]) break
-
-	    ++i
-	  }
-
-	  if (i !== len) {
-	    x = a[i]
-	    y = b[i]
-	  }
-
-	  if (x < y) return -1
-	  if (y < x) return 1
-	  return 0
-	}
-
-	Buffer.isEncoding = function isEncoding (encoding) {
-	  switch (String(encoding).toLowerCase()) {
-	    case 'hex':
-	    case 'utf8':
-	    case 'utf-8':
-	    case 'ascii':
-	    case 'binary':
-	    case 'base64':
-	    case 'raw':
-	    case 'ucs2':
-	    case 'ucs-2':
-	    case 'utf16le':
-	    case 'utf-16le':
-	      return true
-	    default:
-	      return false
-	  }
-	}
-
-	Buffer.concat = function concat (list, length) {
-	  if (!isArray(list)) throw new TypeError('list argument must be an Array of Buffers.')
-
-	  if (list.length === 0) {
-	    return new Buffer(0)
-	  }
-
-	  var i
-	  if (length === undefined) {
-	    length = 0
-	    for (i = 0; i < list.length; i++) {
-	      length += list[i].length
-	    }
-	  }
-
-	  var buf = new Buffer(length)
-	  var pos = 0
-	  for (i = 0; i < list.length; i++) {
-	    var item = list[i]
-	    item.copy(buf, pos)
-	    pos += item.length
-	  }
-	  return buf
-	}
-
-	function byteLength (string, encoding) {
-	  if (typeof string !== 'string') string = '' + string
-
-	  var len = string.length
-	  if (len === 0) return 0
-
-	  // Use a for loop to avoid recursion
-	  var loweredCase = false
-	  for (;;) {
-	    switch (encoding) {
-	      case 'ascii':
-	      case 'binary':
-	      // Deprecated
-	      case 'raw':
-	      case 'raws':
-	        return len
-	      case 'utf8':
-	      case 'utf-8':
-	        return utf8ToBytes(string).length
-	      case 'ucs2':
-	      case 'ucs-2':
-	      case 'utf16le':
-	      case 'utf-16le':
-	        return len * 2
-	      case 'hex':
-	        return len >>> 1
-	      case 'base64':
-	        return base64ToBytes(string).length
-	      default:
-	        if (loweredCase) return utf8ToBytes(string).length // assume utf8
-	        encoding = ('' + encoding).toLowerCase()
-	        loweredCase = true
-	    }
-	  }
-	}
-	Buffer.byteLength = byteLength
-
-	function slowToString (encoding, start, end) {
-	  var loweredCase = false
-
-	  start = start | 0
-	  end = end === undefined || end === Infinity ? this.length : end | 0
-
-	  if (!encoding) encoding = 'utf8'
-	  if (start < 0) start = 0
-	  if (end > this.length) end = this.length
-	  if (end <= start) return ''
-
-	  while (true) {
-	    switch (encoding) {
-	      case 'hex':
-	        return hexSlice(this, start, end)
-
-	      case 'utf8':
-	      case 'utf-8':
-	        return utf8Slice(this, start, end)
-
-	      case 'ascii':
-	        return asciiSlice(this, start, end)
-
-	      case 'binary':
-	        return binarySlice(this, start, end)
-
-	      case 'base64':
-	        return base64Slice(this, start, end)
-
-	      case 'ucs2':
-	      case 'ucs-2':
-	      case 'utf16le':
-	      case 'utf-16le':
-	        return utf16leSlice(this, start, end)
-
-	      default:
-	        if (loweredCase) throw new TypeError('Unknown encoding: ' + encoding)
-	        encoding = (encoding + '').toLowerCase()
-	        loweredCase = true
-	    }
-	  }
-	}
-
-	Buffer.prototype.toString = function toString () {
-	  var length = this.length | 0
-	  if (length === 0) return ''
-	  if (arguments.length === 0) return utf8Slice(this, 0, length)
-	  return slowToString.apply(this, arguments)
-	}
-
-	Buffer.prototype.equals = function equals (b) {
-	  if (!Buffer.isBuffer(b)) throw new TypeError('Argument must be a Buffer')
-	  if (this === b) return true
-	  return Buffer.compare(this, b) === 0
-	}
-
-	Buffer.prototype.inspect = function inspect () {
-	  var str = ''
-	  var max = exports.INSPECT_MAX_BYTES
-	  if (this.length > 0) {
-	    str = this.toString('hex', 0, max).match(/.{2}/g).join(' ')
-	    if (this.length > max) str += ' ... '
-	  }
-	  return '<Buffer ' + str + '>'
-	}
-
-	Buffer.prototype.compare = function compare (b) {
-	  if (!Buffer.isBuffer(b)) throw new TypeError('Argument must be a Buffer')
-	  if (this === b) return 0
-	  return Buffer.compare(this, b)
-	}
-
-	Buffer.prototype.indexOf = function indexOf (val, byteOffset) {
-	  if (byteOffset > 0x7fffffff) byteOffset = 0x7fffffff
-	  else if (byteOffset < -0x80000000) byteOffset = -0x80000000
-	  byteOffset >>= 0
-
-	  if (this.length === 0) return -1
-	  if (byteOffset >= this.length) return -1
-
-	  // Negative offsets start from the end of the buffer
-	  if (byteOffset < 0) byteOffset = Math.max(this.length + byteOffset, 0)
-
-	  if (typeof val === 'string') {
-	    if (val.length === 0) return -1 // special case: looking for empty string always fails
-	    return String.prototype.indexOf.call(this, val, byteOffset)
-	  }
-	  if (Buffer.isBuffer(val)) {
-	    return arrayIndexOf(this, val, byteOffset)
-	  }
-	  if (typeof val === 'number') {
-	    if (Buffer.TYPED_ARRAY_SUPPORT && Uint8Array.prototype.indexOf === 'function') {
-	      return Uint8Array.prototype.indexOf.call(this, val, byteOffset)
-	    }
-	    return arrayIndexOf(this, [ val ], byteOffset)
-	  }
-
-	  function arrayIndexOf (arr, val, byteOffset) {
-	    var foundIndex = -1
-	    for (var i = 0; byteOffset + i < arr.length; i++) {
-	      if (arr[byteOffset + i] === val[foundIndex === -1 ? 0 : i - foundIndex]) {
-	        if (foundIndex === -1) foundIndex = i
-	        if (i - foundIndex + 1 === val.length) return byteOffset + foundIndex
-	      } else {
-	        foundIndex = -1
-	      }
-	    }
-	    return -1
-	  }
-
-	  throw new TypeError('val must be string, number or Buffer')
-	}
-
-	// `get` is deprecated
-	Buffer.prototype.get = function get (offset) {
-	  console.log('.get() is deprecated. Access using array indexes instead.')
-	  return this.readUInt8(offset)
-	}
-
-	// `set` is deprecated
-	Buffer.prototype.set = function set (v, offset) {
-	  console.log('.set() is deprecated. Access using array indexes instead.')
-	  return this.writeUInt8(v, offset)
-	}
-
-	function hexWrite (buf, string, offset, length) {
-	  offset = Number(offset) || 0
-	  var remaining = buf.length - offset
-	  if (!length) {
-	    length = remaining
-	  } else {
-	    length = Number(length)
-	    if (length > remaining) {
-	      length = remaining
-	    }
-	  }
-
-	  // must be an even number of digits
-	  var strLen = string.length
-	  if (strLen % 2 !== 0) throw new Error('Invalid hex string')
-
-	  if (length > strLen / 2) {
-	    length = strLen / 2
-	  }
-	  for (var i = 0; i < length; i++) {
-	    var parsed = parseInt(string.substr(i * 2, 2), 16)
-	    if (isNaN(parsed)) throw new Error('Invalid hex string')
-	    buf[offset + i] = parsed
-	  }
-	  return i
-	}
-
-	function utf8Write (buf, string, offset, length) {
-	  return blitBuffer(utf8ToBytes(string, buf.length - offset), buf, offset, length)
-	}
-
-	function asciiWrite (buf, string, offset, length) {
-	  return blitBuffer(asciiToBytes(string), buf, offset, length)
-	}
-
-	function binaryWrite (buf, string, offset, length) {
-	  return asciiWrite(buf, string, offset, length)
-	}
-
-	function base64Write (buf, string, offset, length) {
-	  return blitBuffer(base64ToBytes(string), buf, offset, length)
-	}
-
-	function ucs2Write (buf, string, offset, length) {
-	  return blitBuffer(utf16leToBytes(string, buf.length - offset), buf, offset, length)
-	}
-
-	Buffer.prototype.write = function write (string, offset, length, encoding) {
-	  // Buffer#write(string)
-	  if (offset === undefined) {
-	    encoding = 'utf8'
-	    length = this.length
-	    offset = 0
-	  // Buffer#write(string, encoding)
-	  } else if (length === undefined && typeof offset === 'string') {
-	    encoding = offset
-	    length = this.length
-	    offset = 0
-	  // Buffer#write(string, offset[, length][, encoding])
-	  } else if (isFinite(offset)) {
-	    offset = offset | 0
-	    if (isFinite(length)) {
-	      length = length | 0
-	      if (encoding === undefined) encoding = 'utf8'
-	    } else {
-	      encoding = length
-	      length = undefined
-	    }
-	  // legacy write(string, encoding, offset, length) - remove in v0.13
-	  } else {
-	    var swap = encoding
-	    encoding = offset
-	    offset = length | 0
-	    length = swap
-	  }
-
-	  var remaining = this.length - offset
-	  if (length === undefined || length > remaining) length = remaining
-
-	  if ((string.length > 0 && (length < 0 || offset < 0)) || offset > this.length) {
-	    throw new RangeError('attempt to write outside buffer bounds')
-	  }
-
-	  if (!encoding) encoding = 'utf8'
-
-	  var loweredCase = false
-	  for (;;) {
-	    switch (encoding) {
-	      case 'hex':
-	        return hexWrite(this, string, offset, length)
-
-	      case 'utf8':
-	      case 'utf-8':
-	        return utf8Write(this, string, offset, length)
-
-	      case 'ascii':
-	        return asciiWrite(this, string, offset, length)
-
-	      case 'binary':
-	        return binaryWrite(this, string, offset, length)
-
-	      case 'base64':
-	        // Warning: maxLength not taken into account in base64Write
-	        return base64Write(this, string, offset, length)
-
-	      case 'ucs2':
-	      case 'ucs-2':
-	      case 'utf16le':
-	      case 'utf-16le':
-	        return ucs2Write(this, string, offset, length)
-
-	      default:
-	        if (loweredCase) throw new TypeError('Unknown encoding: ' + encoding)
-	        encoding = ('' + encoding).toLowerCase()
-	        loweredCase = true
-	    }
-	  }
-	}
-
-	Buffer.prototype.toJSON = function toJSON () {
-	  return {
-	    type: 'Buffer',
-	    data: Array.prototype.slice.call(this._arr || this, 0)
-	  }
-	}
-
-	function base64Slice (buf, start, end) {
-	  if (start === 0 && end === buf.length) {
-	    return base64.fromByteArray(buf)
-	  } else {
-	    return base64.fromByteArray(buf.slice(start, end))
-	  }
-	}
-
-	function utf8Slice (buf, start, end) {
-	  end = Math.min(buf.length, end)
-	  var res = []
-
-	  var i = start
-	  while (i < end) {
-	    var firstByte = buf[i]
-	    var codePoint = null
-	    var bytesPerSequence = (firstByte > 0xEF) ? 4
-	      : (firstByte > 0xDF) ? 3
-	      : (firstByte > 0xBF) ? 2
-	      : 1
-
-	    if (i + bytesPerSequence <= end) {
-	      var secondByte, thirdByte, fourthByte, tempCodePoint
-
-	      switch (bytesPerSequence) {
-	        case 1:
-	          if (firstByte < 0x80) {
-	            codePoint = firstByte
-	          }
-	          break
-	        case 2:
-	          secondByte = buf[i + 1]
-	          if ((secondByte & 0xC0) === 0x80) {
-	            tempCodePoint = (firstByte & 0x1F) << 0x6 | (secondByte & 0x3F)
-	            if (tempCodePoint > 0x7F) {
-	              codePoint = tempCodePoint
-	            }
-	          }
-	          break
-	        case 3:
-	          secondByte = buf[i + 1]
-	          thirdByte = buf[i + 2]
-	          if ((secondByte & 0xC0) === 0x80 && (thirdByte & 0xC0) === 0x80) {
-	            tempCodePoint = (firstByte & 0xF) << 0xC | (secondByte & 0x3F) << 0x6 | (thirdByte & 0x3F)
-	            if (tempCodePoint > 0x7FF && (tempCodePoint < 0xD800 || tempCodePoint > 0xDFFF)) {
-	              codePoint = tempCodePoint
-	            }
-	          }
-	          break
-	        case 4:
-	          secondByte = buf[i + 1]
-	          thirdByte = buf[i + 2]
-	          fourthByte = buf[i + 3]
-	          if ((secondByte & 0xC0) === 0x80 && (thirdByte & 0xC0) === 0x80 && (fourthByte & 0xC0) === 0x80) {
-	            tempCodePoint = (firstByte & 0xF) << 0x12 | (secondByte & 0x3F) << 0xC | (thirdByte & 0x3F) << 0x6 | (fourthByte & 0x3F)
-	            if (tempCodePoint > 0xFFFF && tempCodePoint < 0x110000) {
-	              codePoint = tempCodePoint
-	            }
-	          }
-	      }
-	    }
-
-	    if (codePoint === null) {
-	      // we did not generate a valid codePoint so insert a
-	      // replacement char (U+FFFD) and advance only 1 byte
-	      codePoint = 0xFFFD
-	      bytesPerSequence = 1
-	    } else if (codePoint > 0xFFFF) {
-	      // encode to utf16 (surrogate pair dance)
-	      codePoint -= 0x10000
-	      res.push(codePoint >>> 10 & 0x3FF | 0xD800)
-	      codePoint = 0xDC00 | codePoint & 0x3FF
-	    }
-
-	    res.push(codePoint)
-	    i += bytesPerSequence
-	  }
-
-	  return decodeCodePointsArray(res)
-	}
-
-	// Based on http://stackoverflow.com/a/22747272/680742, the browser with
-	// the lowest limit is Chrome, with 0x10000 args.
-	// We go 1 magnitude less, for safety
-	var MAX_ARGUMENTS_LENGTH = 0x1000
-
-	function decodeCodePointsArray (codePoints) {
-	  var len = codePoints.length
-	  if (len <= MAX_ARGUMENTS_LENGTH) {
-	    return String.fromCharCode.apply(String, codePoints) // avoid extra slice()
-	  }
-
-	  // Decode in chunks to avoid "call stack size exceeded".
-	  var res = ''
-	  var i = 0
-	  while (i < len) {
-	    res += String.fromCharCode.apply(
-	      String,
-	      codePoints.slice(i, i += MAX_ARGUMENTS_LENGTH)
-	    )
-	  }
-	  return res
-	}
-
-	function asciiSlice (buf, start, end) {
-	  var ret = ''
-	  end = Math.min(buf.length, end)
-
-	  for (var i = start; i < end; i++) {
-	    ret += String.fromCharCode(buf[i] & 0x7F)
-	  }
-	  return ret
-	}
-
-	function binarySlice (buf, start, end) {
-	  var ret = ''
-	  end = Math.min(buf.length, end)
-
-	  for (var i = start; i < end; i++) {
-	    ret += String.fromCharCode(buf[i])
-	  }
-	  return ret
-	}
-
-	function hexSlice (buf, start, end) {
-	  var len = buf.length
-
-	  if (!start || start < 0) start = 0
-	  if (!end || end < 0 || end > len) end = len
-
-	  var out = ''
-	  for (var i = start; i < end; i++) {
-	    out += toHex(buf[i])
-	  }
-	  return out
-	}
-
-	function utf16leSlice (buf, start, end) {
-	  var bytes = buf.slice(start, end)
-	  var res = ''
-	  for (var i = 0; i < bytes.length; i += 2) {
-	    res += String.fromCharCode(bytes[i] + bytes[i + 1] * 256)
-	  }
-	  return res
-	}
-
-	Buffer.prototype.slice = function slice (start, end) {
-	  var len = this.length
-	  start = ~~start
-	  end = end === undefined ? len : ~~end
-
-	  if (start < 0) {
-	    start += len
-	    if (start < 0) start = 0
-	  } else if (start > len) {
-	    start = len
-	  }
-
-	  if (end < 0) {
-	    end += len
-	    if (end < 0) end = 0
-	  } else if (end > len) {
-	    end = len
-	  }
-
-	  if (end < start) end = start
-
-	  var newBuf
-	  if (Buffer.TYPED_ARRAY_SUPPORT) {
-	    newBuf = Buffer._augment(this.subarray(start, end))
-	  } else {
-	    var sliceLen = end - start
-	    newBuf = new Buffer(sliceLen, undefined)
-	    for (var i = 0; i < sliceLen; i++) {
-	      newBuf[i] = this[i + start]
-	    }
-	  }
-
-	  if (newBuf.length) newBuf.parent = this.parent || this
-
-	  return newBuf
-	}
-
-	/*
-	 * Need to make sure that buffer isn't trying to write out of bounds.
-	 */
-	function checkOffset (offset, ext, length) {
-	  if ((offset % 1) !== 0 || offset < 0) throw new RangeError('offset is not uint')
-	  if (offset + ext > length) throw new RangeError('Trying to access beyond buffer length')
-	}
-
-	Buffer.prototype.readUIntLE = function readUIntLE (offset, byteLength, noAssert) {
-	  offset = offset | 0
-	  byteLength = byteLength | 0
-	  if (!noAssert) checkOffset(offset, byteLength, this.length)
-
-	  var val = this[offset]
-	  var mul = 1
-	  var i = 0
-	  while (++i < byteLength && (mul *= 0x100)) {
-	    val += this[offset + i] * mul
-	  }
-
-	  return val
-	}
-
-	Buffer.prototype.readUIntBE = function readUIntBE (offset, byteLength, noAssert) {
-	  offset = offset | 0
-	  byteLength = byteLength | 0
-	  if (!noAssert) {
-	    checkOffset(offset, byteLength, this.length)
-	  }
-
-	  var val = this[offset + --byteLength]
-	  var mul = 1
-	  while (byteLength > 0 && (mul *= 0x100)) {
-	    val += this[offset + --byteLength] * mul
-	  }
-
-	  return val
-	}
-
-	Buffer.prototype.readUInt8 = function readUInt8 (offset, noAssert) {
-	  if (!noAssert) checkOffset(offset, 1, this.length)
-	  return this[offset]
-	}
-
-	Buffer.prototype.readUInt16LE = function readUInt16LE (offset, noAssert) {
-	  if (!noAssert) checkOffset(offset, 2, this.length)
-	  return this[offset] | (this[offset + 1] << 8)
-	}
-
-	Buffer.prototype.readUInt16BE = function readUInt16BE (offset, noAssert) {
-	  if (!noAssert) checkOffset(offset, 2, this.length)
-	  return (this[offset] << 8) | this[offset + 1]
-	}
-
-	Buffer.prototype.readUInt32LE = function readUInt32LE (offset, noAssert) {
-	  if (!noAssert) checkOffset(offset, 4, this.length)
-
-	  return ((this[offset]) |
-	      (this[offset + 1] << 8) |
-	      (this[offset + 2] << 16)) +
-	      (this[offset + 3] * 0x1000000)
-	}
-
-	Buffer.prototype.readUInt32BE = function readUInt32BE (offset, noAssert) {
-	  if (!noAssert) checkOffset(offset, 4, this.length)
-
-	  return (this[offset] * 0x1000000) +
-	    ((this[offset + 1] << 16) |
-	    (this[offset + 2] << 8) |
-	    this[offset + 3])
-	}
-
-	Buffer.prototype.readIntLE = function readIntLE (offset, byteLength, noAssert) {
-	  offset = offset | 0
-	  byteLength = byteLength | 0
-	  if (!noAssert) checkOffset(offset, byteLength, this.length)
-
-	  var val = this[offset]
-	  var mul = 1
-	  var i = 0
-	  while (++i < byteLength && (mul *= 0x100)) {
-	    val += this[offset + i] * mul
-	  }
-	  mul *= 0x80
-
-	  if (val >= mul) val -= Math.pow(2, 8 * byteLength)
-
-	  return val
-	}
-
-	Buffer.prototype.readIntBE = function readIntBE (offset, byteLength, noAssert) {
-	  offset = offset | 0
-	  byteLength = byteLength | 0
-	  if (!noAssert) checkOffset(offset, byteLength, this.length)
-
-	  var i = byteLength
-	  var mul = 1
-	  var val = this[offset + --i]
-	  while (i > 0 && (mul *= 0x100)) {
-	    val += this[offset + --i] * mul
-	  }
-	  mul *= 0x80
-
-	  if (val >= mul) val -= Math.pow(2, 8 * byteLength)
-
-	  return val
-	}
-
-	Buffer.prototype.readInt8 = function readInt8 (offset, noAssert) {
-	  if (!noAssert) checkOffset(offset, 1, this.length)
-	  if (!(this[offset] & 0x80)) return (this[offset])
-	  return ((0xff - this[offset] + 1) * -1)
-	}
-
-	Buffer.prototype.readInt16LE = function readInt16LE (offset, noAssert) {
-	  if (!noAssert) checkOffset(offset, 2, this.length)
-	  var val = this[offset] | (this[offset + 1] << 8)
-	  return (val & 0x8000) ? val | 0xFFFF0000 : val
-	}
-
-	Buffer.prototype.readInt16BE = function readInt16BE (offset, noAssert) {
-	  if (!noAssert) checkOffset(offset, 2, this.length)
-	  var val = this[offset + 1] | (this[offset] << 8)
-	  return (val & 0x8000) ? val | 0xFFFF0000 : val
-	}
-
-	Buffer.prototype.readInt32LE = function readInt32LE (offset, noAssert) {
-	  if (!noAssert) checkOffset(offset, 4, this.length)
-
-	  return (this[offset]) |
-	    (this[offset + 1] << 8) |
-	    (this[offset + 2] << 16) |
-	    (this[offset + 3] << 24)
-	}
-
-	Buffer.prototype.readInt32BE = function readInt32BE (offset, noAssert) {
-	  if (!noAssert) checkOffset(offset, 4, this.length)
-
-	  return (this[offset] << 24) |
-	    (this[offset + 1] << 16) |
-	    (this[offset + 2] << 8) |
-	    (this[offset + 3])
-	}
-
-	Buffer.prototype.readFloatLE = function readFloatLE (offset, noAssert) {
-	  if (!noAssert) checkOffset(offset, 4, this.length)
-	  return ieee754.read(this, offset, true, 23, 4)
-	}
-
-	Buffer.prototype.readFloatBE = function readFloatBE (offset, noAssert) {
-	  if (!noAssert) checkOffset(offset, 4, this.length)
-	  return ieee754.read(this, offset, false, 23, 4)
-	}
-
-	Buffer.prototype.readDoubleLE = function readDoubleLE (offset, noAssert) {
-	  if (!noAssert) checkOffset(offset, 8, this.length)
-	  return ieee754.read(this, offset, true, 52, 8)
-	}
-
-	Buffer.prototype.readDoubleBE = function readDoubleBE (offset, noAssert) {
-	  if (!noAssert) checkOffset(offset, 8, this.length)
-	  return ieee754.read(this, offset, false, 52, 8)
-	}
-
-	function checkInt (buf, value, offset, ext, max, min) {
-	  if (!Buffer.isBuffer(buf)) throw new TypeError('buffer must be a Buffer instance')
-	  if (value > max || value < min) throw new RangeError('value is out of bounds')
-	  if (offset + ext > buf.length) throw new RangeError('index out of range')
-	}
-
-	Buffer.prototype.writeUIntLE = function writeUIntLE (value, offset, byteLength, noAssert) {
-	  value = +value
-	  offset = offset | 0
-	  byteLength = byteLength | 0
-	  if (!noAssert) checkInt(this, value, offset, byteLength, Math.pow(2, 8 * byteLength), 0)
-
-	  var mul = 1
-	  var i = 0
-	  this[offset] = value & 0xFF
-	  while (++i < byteLength && (mul *= 0x100)) {
-	    this[offset + i] = (value / mul) & 0xFF
-	  }
-
-	  return offset + byteLength
-	}
-
-	Buffer.prototype.writeUIntBE = function writeUIntBE (value, offset, byteLength, noAssert) {
-	  value = +value
-	  offset = offset | 0
-	  byteLength = byteLength | 0
-	  if (!noAssert) checkInt(this, value, offset, byteLength, Math.pow(2, 8 * byteLength), 0)
-
-	  var i = byteLength - 1
-	  var mul = 1
-	  this[offset + i] = value & 0xFF
-	  while (--i >= 0 && (mul *= 0x100)) {
-	    this[offset + i] = (value / mul) & 0xFF
-	  }
-
-	  return offset + byteLength
-	}
-
-	Buffer.prototype.writeUInt8 = function writeUInt8 (value, offset, noAssert) {
-	  value = +value
-	  offset = offset | 0
-	  if (!noAssert) checkInt(this, value, offset, 1, 0xff, 0)
-	  if (!Buffer.TYPED_ARRAY_SUPPORT) value = Math.floor(value)
-	  this[offset] = (value & 0xff)
-	  return offset + 1
-	}
-
-	function objectWriteUInt16 (buf, value, offset, littleEndian) {
-	  if (value < 0) value = 0xffff + value + 1
-	  for (var i = 0, j = Math.min(buf.length - offset, 2); i < j; i++) {
-	    buf[offset + i] = (value & (0xff << (8 * (littleEndian ? i : 1 - i)))) >>>
-	      (littleEndian ? i : 1 - i) * 8
-	  }
-	}
-
-	Buffer.prototype.writeUInt16LE = function writeUInt16LE (value, offset, noAssert) {
-	  value = +value
-	  offset = offset | 0
-	  if (!noAssert) checkInt(this, value, offset, 2, 0xffff, 0)
-	  if (Buffer.TYPED_ARRAY_SUPPORT) {
-	    this[offset] = (value & 0xff)
-	    this[offset + 1] = (value >>> 8)
-	  } else {
-	    objectWriteUInt16(this, value, offset, true)
-	  }
-	  return offset + 2
-	}
-
-	Buffer.prototype.writeUInt16BE = function writeUInt16BE (value, offset, noAssert) {
-	  value = +value
-	  offset = offset | 0
-	  if (!noAssert) checkInt(this, value, offset, 2, 0xffff, 0)
-	  if (Buffer.TYPED_ARRAY_SUPPORT) {
-	    this[offset] = (value >>> 8)
-	    this[offset + 1] = (value & 0xff)
-	  } else {
-	    objectWriteUInt16(this, value, offset, false)
-	  }
-	  return offset + 2
-	}
-
-	function objectWriteUInt32 (buf, value, offset, littleEndian) {
-	  if (value < 0) value = 0xffffffff + value + 1
-	  for (var i = 0, j = Math.min(buf.length - offset, 4); i < j; i++) {
-	    buf[offset + i] = (value >>> (littleEndian ? i : 3 - i) * 8) & 0xff
-	  }
-	}
-
-	Buffer.prototype.writeUInt32LE = function writeUInt32LE (value, offset, noAssert) {
-	  value = +value
-	  offset = offset | 0
-	  if (!noAssert) checkInt(this, value, offset, 4, 0xffffffff, 0)
-	  if (Buffer.TYPED_ARRAY_SUPPORT) {
-	    this[offset + 3] = (value >>> 24)
-	    this[offset + 2] = (value >>> 16)
-	    this[offset + 1] = (value >>> 8)
-	    this[offset] = (value & 0xff)
-	  } else {
-	    objectWriteUInt32(this, value, offset, true)
-	  }
-	  return offset + 4
-	}
-
-	Buffer.prototype.writeUInt32BE = function writeUInt32BE (value, offset, noAssert) {
-	  value = +value
-	  offset = offset | 0
-	  if (!noAssert) checkInt(this, value, offset, 4, 0xffffffff, 0)
-	  if (Buffer.TYPED_ARRAY_SUPPORT) {
-	    this[offset] = (value >>> 24)
-	    this[offset + 1] = (value >>> 16)
-	    this[offset + 2] = (value >>> 8)
-	    this[offset + 3] = (value & 0xff)
-	  } else {
-	    objectWriteUInt32(this, value, offset, false)
-	  }
-	  return offset + 4
-	}
-
-	Buffer.prototype.writeIntLE = function writeIntLE (value, offset, byteLength, noAssert) {
-	  value = +value
-	  offset = offset | 0
-	  if (!noAssert) {
-	    var limit = Math.pow(2, 8 * byteLength - 1)
-
-	    checkInt(this, value, offset, byteLength, limit - 1, -limit)
-	  }
-
-	  var i = 0
-	  var mul = 1
-	  var sub = value < 0 ? 1 : 0
-	  this[offset] = value & 0xFF
-	  while (++i < byteLength && (mul *= 0x100)) {
-	    this[offset + i] = ((value / mul) >> 0) - sub & 0xFF
-	  }
-
-	  return offset + byteLength
-	}
-
-	Buffer.prototype.writeIntBE = function writeIntBE (value, offset, byteLength, noAssert) {
-	  value = +value
-	  offset = offset | 0
-	  if (!noAssert) {
-	    var limit = Math.pow(2, 8 * byteLength - 1)
-
-	    checkInt(this, value, offset, byteLength, limit - 1, -limit)
-	  }
-
-	  var i = byteLength - 1
-	  var mul = 1
-	  var sub = value < 0 ? 1 : 0
-	  this[offset + i] = value & 0xFF
-	  while (--i >= 0 && (mul *= 0x100)) {
-	    this[offset + i] = ((value / mul) >> 0) - sub & 0xFF
-	  }
-
-	  return offset + byteLength
-	}
-
-	Buffer.prototype.writeInt8 = function writeInt8 (value, offset, noAssert) {
-	  value = +value
-	  offset = offset | 0
-	  if (!noAssert) checkInt(this, value, offset, 1, 0x7f, -0x80)
-	  if (!Buffer.TYPED_ARRAY_SUPPORT) value = Math.floor(value)
-	  if (value < 0) value = 0xff + value + 1
-	  this[offset] = (value & 0xff)
-	  return offset + 1
-	}
-
-	Buffer.prototype.writeInt16LE = function writeInt16LE (value, offset, noAssert) {
-	  value = +value
-	  offset = offset | 0
-	  if (!noAssert) checkInt(this, value, offset, 2, 0x7fff, -0x8000)
-	  if (Buffer.TYPED_ARRAY_SUPPORT) {
-	    this[offset] = (value & 0xff)
-	    this[offset + 1] = (value >>> 8)
-	  } else {
-	    objectWriteUInt16(this, value, offset, true)
-	  }
-	  return offset + 2
-	}
-
-	Buffer.prototype.writeInt16BE = function writeInt16BE (value, offset, noAssert) {
-	  value = +value
-	  offset = offset | 0
-	  if (!noAssert) checkInt(this, value, offset, 2, 0x7fff, -0x8000)
-	  if (Buffer.TYPED_ARRAY_SUPPORT) {
-	    this[offset] = (value >>> 8)
-	    this[offset + 1] = (value & 0xff)
-	  } else {
-	    objectWriteUInt16(this, value, offset, false)
-	  }
-	  return offset + 2
-	}
-
-	Buffer.prototype.writeInt32LE = function writeInt32LE (value, offset, noAssert) {
-	  value = +value
-	  offset = offset | 0
-	  if (!noAssert) checkInt(this, value, offset, 4, 0x7fffffff, -0x80000000)
-	  if (Buffer.TYPED_ARRAY_SUPPORT) {
-	    this[offset] = (value & 0xff)
-	    this[offset + 1] = (value >>> 8)
-	    this[offset + 2] = (value >>> 16)
-	    this[offset + 3] = (value >>> 24)
-	  } else {
-	    objectWriteUInt32(this, value, offset, true)
-	  }
-	  return offset + 4
-	}
-
-	Buffer.prototype.writeInt32BE = function writeInt32BE (value, offset, noAssert) {
-	  value = +value
-	  offset = offset | 0
-	  if (!noAssert) checkInt(this, value, offset, 4, 0x7fffffff, -0x80000000)
-	  if (value < 0) value = 0xffffffff + value + 1
-	  if (Buffer.TYPED_ARRAY_SUPPORT) {
-	    this[offset] = (value >>> 24)
-	    this[offset + 1] = (value >>> 16)
-	    this[offset + 2] = (value >>> 8)
-	    this[offset + 3] = (value & 0xff)
-	  } else {
-	    objectWriteUInt32(this, value, offset, false)
-	  }
-	  return offset + 4
-	}
-
-	function checkIEEE754 (buf, value, offset, ext, max, min) {
-	  if (value > max || value < min) throw new RangeError('value is out of bounds')
-	  if (offset + ext > buf.length) throw new RangeError('index out of range')
-	  if (offset < 0) throw new RangeError('index out of range')
-	}
-
-	function writeFloat (buf, value, offset, littleEndian, noAssert) {
-	  if (!noAssert) {
-	    checkIEEE754(buf, value, offset, 4, 3.4028234663852886e+38, -3.4028234663852886e+38)
-	  }
-	  ieee754.write(buf, value, offset, littleEndian, 23, 4)
-	  return offset + 4
-	}
-
-	Buffer.prototype.writeFloatLE = function writeFloatLE (value, offset, noAssert) {
-	  return writeFloat(this, value, offset, true, noAssert)
-	}
-
-	Buffer.prototype.writeFloatBE = function writeFloatBE (value, offset, noAssert) {
-	  return writeFloat(this, value, offset, false, noAssert)
-	}
-
-	function writeDouble (buf, value, offset, littleEndian, noAssert) {
-	  if (!noAssert) {
-	    checkIEEE754(buf, value, offset, 8, 1.7976931348623157E+308, -1.7976931348623157E+308)
-	  }
-	  ieee754.write(buf, value, offset, littleEndian, 52, 8)
-	  return offset + 8
-	}
-
-	Buffer.prototype.writeDoubleLE = function writeDoubleLE (value, offset, noAssert) {
-	  return writeDouble(this, value, offset, true, noAssert)
-	}
-
-	Buffer.prototype.writeDoubleBE = function writeDoubleBE (value, offset, noAssert) {
-	  return writeDouble(this, value, offset, false, noAssert)
-	}
-
-	// copy(targetBuffer, targetStart=0, sourceStart=0, sourceEnd=buffer.length)
-	Buffer.prototype.copy = function copy (target, targetStart, start, end) {
-	  if (!start) start = 0
-	  if (!end && end !== 0) end = this.length
-	  if (targetStart >= target.length) targetStart = target.length
-	  if (!targetStart) targetStart = 0
-	  if (end > 0 && end < start) end = start
-
-	  // Copy 0 bytes; we're done
-	  if (end === start) return 0
-	  if (target.length === 0 || this.length === 0) return 0
-
-	  // Fatal error conditions
-	  if (targetStart < 0) {
-	    throw new RangeError('targetStart out of bounds')
-	  }
-	  if (start < 0 || start >= this.length) throw new RangeError('sourceStart out of bounds')
-	  if (end < 0) throw new RangeError('sourceEnd out of bounds')
-
-	  // Are we oob?
-	  if (end > this.length) end = this.length
-	  if (target.length - targetStart < end - start) {
-	    end = target.length - targetStart + start
-	  }
-
-	  var len = end - start
-	  var i
-
-	  if (this === target && start < targetStart && targetStart < end) {
-	    // descending copy from end
-	    for (i = len - 1; i >= 0; i--) {
-	      target[i + targetStart] = this[i + start]
-	    }
-	  } else if (len < 1000 || !Buffer.TYPED_ARRAY_SUPPORT) {
-	    // ascending copy from start
-	    for (i = 0; i < len; i++) {
-	      target[i + targetStart] = this[i + start]
-	    }
-	  } else {
-	    target._set(this.subarray(start, start + len), targetStart)
-	  }
-
-	  return len
-	}
-
-	// fill(value, start=0, end=buffer.length)
-	Buffer.prototype.fill = function fill (value, start, end) {
-	  if (!value) value = 0
-	  if (!start) start = 0
-	  if (!end) end = this.length
-
-	  if (end < start) throw new RangeError('end < start')
-
-	  // Fill 0 bytes; we're done
-	  if (end === start) return
-	  if (this.length === 0) return
-
-	  if (start < 0 || start >= this.length) throw new RangeError('start out of bounds')
-	  if (end < 0 || end > this.length) throw new RangeError('end out of bounds')
-
-	  var i
-	  if (typeof value === 'number') {
-	    for (i = start; i < end; i++) {
-	      this[i] = value
-	    }
-	  } else {
-	    var bytes = utf8ToBytes(value.toString())
-	    var len = bytes.length
-	    for (i = start; i < end; i++) {
-	      this[i] = bytes[i % len]
-	    }
-	  }
-
-	  return this
-	}
-
-	/**
-	 * Creates a new `ArrayBuffer` with the *copied* memory of the buffer instance.
-	 * Added in Node 0.12. Only available in browsers that support ArrayBuffer.
-	 */
-	Buffer.prototype.toArrayBuffer = function toArrayBuffer () {
-	  if (typeof Uint8Array !== 'undefined') {
-	    if (Buffer.TYPED_ARRAY_SUPPORT) {
-	      return (new Buffer(this)).buffer
-	    } else {
-	      var buf = new Uint8Array(this.length)
-	      for (var i = 0, len = buf.length; i < len; i += 1) {
-	        buf[i] = this[i]
-	      }
-	      return buf.buffer
-	    }
-	  } else {
-	    throw new TypeError('Buffer.toArrayBuffer not supported in this browser')
-	  }
-	}
-
-	// HELPER FUNCTIONS
-	// ================
-
-	var BP = Buffer.prototype
-
-	/**
-	 * Augment a Uint8Array *instance* (not the Uint8Array class!) with Buffer methods
-	 */
-	Buffer._augment = function _augment (arr) {
-	  arr.constructor = Buffer
-	  arr._isBuffer = true
-
-	  // save reference to original Uint8Array set method before overwriting
-	  arr._set = arr.set
-
-	  // deprecated
-	  arr.get = BP.get
-	  arr.set = BP.set
-
-	  arr.write = BP.write
-	  arr.toString = BP.toString
-	  arr.toLocaleString = BP.toString
-	  arr.toJSON = BP.toJSON
-	  arr.equals = BP.equals
-	  arr.compare = BP.compare
-	  arr.indexOf = BP.indexOf
-	  arr.copy = BP.copy
-	  arr.slice = BP.slice
-	  arr.readUIntLE = BP.readUIntLE
-	  arr.readUIntBE = BP.readUIntBE
-	  arr.readUInt8 = BP.readUInt8
-	  arr.readUInt16LE = BP.readUInt16LE
-	  arr.readUInt16BE = BP.readUInt16BE
-	  arr.readUInt32LE = BP.readUInt32LE
-	  arr.readUInt32BE = BP.readUInt32BE
-	  arr.readIntLE = BP.readIntLE
-	  arr.readIntBE = BP.readIntBE
-	  arr.readInt8 = BP.readInt8
-	  arr.readInt16LE = BP.readInt16LE
-	  arr.readInt16BE = BP.readInt16BE
-	  arr.readInt32LE = BP.readInt32LE
-	  arr.readInt32BE = BP.readInt32BE
-	  arr.readFloatLE = BP.readFloatLE
-	  arr.readFloatBE = BP.readFloatBE
-	  arr.readDoubleLE = BP.readDoubleLE
-	  arr.readDoubleBE = BP.readDoubleBE
-	  arr.writeUInt8 = BP.writeUInt8
-	  arr.writeUIntLE = BP.writeUIntLE
-	  arr.writeUIntBE = BP.writeUIntBE
-	  arr.writeUInt16LE = BP.writeUInt16LE
-	  arr.writeUInt16BE = BP.writeUInt16BE
-	  arr.writeUInt32LE = BP.writeUInt32LE
-	  arr.writeUInt32BE = BP.writeUInt32BE
-	  arr.writeIntLE = BP.writeIntLE
-	  arr.writeIntBE = BP.writeIntBE
-	  arr.writeInt8 = BP.writeInt8
-	  arr.writeInt16LE = BP.writeInt16LE
-	  arr.writeInt16BE = BP.writeInt16BE
-	  arr.writeInt32LE = BP.writeInt32LE
-	  arr.writeInt32BE = BP.writeInt32BE
-	  arr.writeFloatLE = BP.writeFloatLE
-	  arr.writeFloatBE = BP.writeFloatBE
-	  arr.writeDoubleLE = BP.writeDoubleLE
-	  arr.writeDoubleBE = BP.writeDoubleBE
-	  arr.fill = BP.fill
-	  arr.inspect = BP.inspect
-	  arr.toArrayBuffer = BP.toArrayBuffer
-
-	  return arr
-	}
-
-	var INVALID_BASE64_RE = /[^+\/0-9A-Za-z-_]/g
-
-	function base64clean (str) {
-	  // Node strips out invalid characters like \n and \t from the string, base64-js does not
-	  str = stringtrim(str).replace(INVALID_BASE64_RE, '')
-	  // Node converts strings with length < 2 to ''
-	  if (str.length < 2) return ''
-	  // Node allows for non-padded base64 strings (missing trailing ===), base64-js does not
-	  while (str.length % 4 !== 0) {
-	    str = str + '='
-	  }
-	  return str
-	}
-
-	function stringtrim (str) {
-	  if (str.trim) return str.trim()
-	  return str.replace(/^\s+|\s+$/g, '')
-	}
-
-	function toHex (n) {
-	  if (n < 16) return '0' + n.toString(16)
-	  return n.toString(16)
-	}
-
-	function utf8ToBytes (string, units) {
-	  units = units || Infinity
-	  var codePoint
-	  var length = string.length
-	  var leadSurrogate = null
-	  var bytes = []
-
-	  for (var i = 0; i < length; i++) {
-	    codePoint = string.charCodeAt(i)
-
-	    // is surrogate component
-	    if (codePoint > 0xD7FF && codePoint < 0xE000) {
-	      // last char was a lead
-	      if (!leadSurrogate) {
-	        // no lead yet
-	        if (codePoint > 0xDBFF) {
-	          // unexpected trail
-	          if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD)
-	          continue
-	        } else if (i + 1 === length) {
-	          // unpaired lead
-	          if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD)
-	          continue
-	        }
-
-	        // valid lead
-	        leadSurrogate = codePoint
-
-	        continue
-	      }
-
-	      // 2 leads in a row
-	      if (codePoint < 0xDC00) {
-	        if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD)
-	        leadSurrogate = codePoint
-	        continue
-	      }
-
-	      // valid surrogate pair
-	      codePoint = (leadSurrogate - 0xD800 << 10 | codePoint - 0xDC00) + 0x10000
-	    } else if (leadSurrogate) {
-	      // valid bmp char, but last char was a lead
-	      if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD)
-	    }
-
-	    leadSurrogate = null
-
-	    // encode utf8
-	    if (codePoint < 0x80) {
-	      if ((units -= 1) < 0) break
-	      bytes.push(codePoint)
-	    } else if (codePoint < 0x800) {
-	      if ((units -= 2) < 0) break
-	      bytes.push(
-	        codePoint >> 0x6 | 0xC0,
-	        codePoint & 0x3F | 0x80
-	      )
-	    } else if (codePoint < 0x10000) {
-	      if ((units -= 3) < 0) break
-	      bytes.push(
-	        codePoint >> 0xC | 0xE0,
-	        codePoint >> 0x6 & 0x3F | 0x80,
-	        codePoint & 0x3F | 0x80
-	      )
-	    } else if (codePoint < 0x110000) {
-	      if ((units -= 4) < 0) break
-	      bytes.push(
-	        codePoint >> 0x12 | 0xF0,
-	        codePoint >> 0xC & 0x3F | 0x80,
-	        codePoint >> 0x6 & 0x3F | 0x80,
-	        codePoint & 0x3F | 0x80
-	      )
-	    } else {
-	      throw new Error('Invalid code point')
-	    }
-	  }
-
-	  return bytes
-	}
-
-	function asciiToBytes (str) {
-	  var byteArray = []
-	  for (var i = 0; i < str.length; i++) {
-	    // Node's code seems to be doing this and not & 0x7F..
-	    byteArray.push(str.charCodeAt(i) & 0xFF)
-	  }
-	  return byteArray
-	}
-
-	function utf16leToBytes (str, units) {
-	  var c, hi, lo
-	  var byteArray = []
-	  for (var i = 0; i < str.length; i++) {
-	    if ((units -= 2) < 0) break
-
-	    c = str.charCodeAt(i)
-	    hi = c >> 8
-	    lo = c % 256
-	    byteArray.push(lo)
-	    byteArray.push(hi)
-	  }
-
-	  return byteArray
-	}
-
-	function base64ToBytes (str) {
-	  return base64.toByteArray(base64clean(str))
-	}
-
-	function blitBuffer (src, dst, offset, length) {
-	  for (var i = 0; i < length; i++) {
-	    if ((i + offset >= dst.length) || (i >= src.length)) break
-	    dst[i + offset] = src[i]
-	  }
-	  return i
-	}
-
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(3).Buffer, (function() { return this; }())))
-
-/***/ },
-/* 4 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-
-	;(function (exports) {
-		'use strict';
-
-	  var Arr = (typeof Uint8Array !== 'undefined')
-	    ? Uint8Array
-	    : Array
-
-		var PLUS   = '+'.charCodeAt(0)
-		var SLASH  = '/'.charCodeAt(0)
-		var NUMBER = '0'.charCodeAt(0)
-		var LOWER  = 'a'.charCodeAt(0)
-		var UPPER  = 'A'.charCodeAt(0)
-		var PLUS_URL_SAFE = '-'.charCodeAt(0)
-		var SLASH_URL_SAFE = '_'.charCodeAt(0)
-
-		function decode (elt) {
-			var code = elt.charCodeAt(0)
-			if (code === PLUS ||
-			    code === PLUS_URL_SAFE)
-				return 62 // '+'
-			if (code === SLASH ||
-			    code === SLASH_URL_SAFE)
-				return 63 // '/'
-			if (code < NUMBER)
-				return -1 //no match
-			if (code < NUMBER + 10)
-				return code - NUMBER + 26 + 26
-			if (code < UPPER + 26)
-				return code - UPPER
-			if (code < LOWER + 26)
-				return code - LOWER + 26
-		}
-
-		function b64ToByteArray (b64) {
-			var i, j, l, tmp, placeHolders, arr
-
-			if (b64.length % 4 > 0) {
-				throw new Error('Invalid string. Length must be a multiple of 4')
-			}
-
-			// the number of equal signs (place holders)
-			// if there are two placeholders, than the two characters before it
-			// represent one byte
-			// if there is only one, then the three characters before it represent 2 bytes
-			// this is just a cheap hack to not do indexOf twice
-			var len = b64.length
-			placeHolders = '=' === b64.charAt(len - 2) ? 2 : '=' === b64.charAt(len - 1) ? 1 : 0
-
-			// base64 is 4/3 + up to two characters of the original data
-			arr = new Arr(b64.length * 3 / 4 - placeHolders)
-
-			// if there are placeholders, only get up to the last complete 4 chars
-			l = placeHolders > 0 ? b64.length - 4 : b64.length
-
-			var L = 0
-
-			function push (v) {
-				arr[L++] = v
-			}
-
-			for (i = 0, j = 0; i < l; i += 4, j += 3) {
-				tmp = (decode(b64.charAt(i)) << 18) | (decode(b64.charAt(i + 1)) << 12) | (decode(b64.charAt(i + 2)) << 6) | decode(b64.charAt(i + 3))
-				push((tmp & 0xFF0000) >> 16)
-				push((tmp & 0xFF00) >> 8)
-				push(tmp & 0xFF)
-			}
-
-			if (placeHolders === 2) {
-				tmp = (decode(b64.charAt(i)) << 2) | (decode(b64.charAt(i + 1)) >> 4)
-				push(tmp & 0xFF)
-			} else if (placeHolders === 1) {
-				tmp = (decode(b64.charAt(i)) << 10) | (decode(b64.charAt(i + 1)) << 4) | (decode(b64.charAt(i + 2)) >> 2)
-				push((tmp >> 8) & 0xFF)
-				push(tmp & 0xFF)
-			}
-
-			return arr
-		}
-
-		function uint8ToBase64 (uint8) {
-			var i,
-				extraBytes = uint8.length % 3, // if we have 1 byte left, pad 2 bytes
-				output = "",
-				temp, length
-
-			function encode (num) {
-				return lookup.charAt(num)
-			}
-
-			function tripletToBase64 (num) {
-				return encode(num >> 18 & 0x3F) + encode(num >> 12 & 0x3F) + encode(num >> 6 & 0x3F) + encode(num & 0x3F)
-			}
-
-			// go through the array every three bytes, we'll deal with trailing stuff later
-			for (i = 0, length = uint8.length - extraBytes; i < length; i += 3) {
-				temp = (uint8[i] << 16) + (uint8[i + 1] << 8) + (uint8[i + 2])
-				output += tripletToBase64(temp)
-			}
-
-			// pad the end with zeros, but make sure to not forget the extra bytes
-			switch (extraBytes) {
-				case 1:
-					temp = uint8[uint8.length - 1]
-					output += encode(temp >> 2)
-					output += encode((temp << 4) & 0x3F)
-					output += '=='
-					break
-				case 2:
-					temp = (uint8[uint8.length - 2] << 8) + (uint8[uint8.length - 1])
-					output += encode(temp >> 10)
-					output += encode((temp >> 4) & 0x3F)
-					output += encode((temp << 2) & 0x3F)
-					output += '='
-					break
-			}
-
-			return output
-		}
-
-		exports.toByteArray = b64ToByteArray
-		exports.fromByteArray = uint8ToBase64
-	}( false ? (this.base64js = {}) : exports))
-
-
-/***/ },
-/* 5 */
-/***/ function(module, exports) {
-
-	exports.read = function (buffer, offset, isLE, mLen, nBytes) {
-	  var e, m
-	  var eLen = nBytes * 8 - mLen - 1
-	  var eMax = (1 << eLen) - 1
-	  var eBias = eMax >> 1
-	  var nBits = -7
-	  var i = isLE ? (nBytes - 1) : 0
-	  var d = isLE ? -1 : 1
-	  var s = buffer[offset + i]
-
-	  i += d
-
-	  e = s & ((1 << (-nBits)) - 1)
-	  s >>= (-nBits)
-	  nBits += eLen
-	  for (; nBits > 0; e = e * 256 + buffer[offset + i], i += d, nBits -= 8) {}
-
-	  m = e & ((1 << (-nBits)) - 1)
-	  e >>= (-nBits)
-	  nBits += mLen
-	  for (; nBits > 0; m = m * 256 + buffer[offset + i], i += d, nBits -= 8) {}
-
-	  if (e === 0) {
-	    e = 1 - eBias
-	  } else if (e === eMax) {
-	    return m ? NaN : ((s ? -1 : 1) * Infinity)
-	  } else {
-	    m = m + Math.pow(2, mLen)
-	    e = e - eBias
-	  }
-	  return (s ? -1 : 1) * m * Math.pow(2, e - mLen)
-	}
-
-	exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
-	  var e, m, c
-	  var eLen = nBytes * 8 - mLen - 1
-	  var eMax = (1 << eLen) - 1
-	  var eBias = eMax >> 1
-	  var rt = (mLen === 23 ? Math.pow(2, -24) - Math.pow(2, -77) : 0)
-	  var i = isLE ? 0 : (nBytes - 1)
-	  var d = isLE ? 1 : -1
-	  var s = value < 0 || (value === 0 && 1 / value < 0) ? 1 : 0
-
-	  value = Math.abs(value)
-
-	  if (isNaN(value) || value === Infinity) {
-	    m = isNaN(value) ? 1 : 0
-	    e = eMax
-	  } else {
-	    e = Math.floor(Math.log(value) / Math.LN2)
-	    if (value * (c = Math.pow(2, -e)) < 1) {
-	      e--
-	      c *= 2
-	    }
-	    if (e + eBias >= 1) {
-	      value += rt / c
-	    } else {
-	      value += rt * Math.pow(2, 1 - eBias)
-	    }
-	    if (value * c >= 2) {
-	      e++
-	      c /= 2
-	    }
-
-	    if (e + eBias >= eMax) {
-	      m = 0
-	      e = eMax
-	    } else if (e + eBias >= 1) {
-	      m = (value * c - 1) * Math.pow(2, mLen)
-	      e = e + eBias
-	    } else {
-	      m = value * Math.pow(2, eBias - 1) * Math.pow(2, mLen)
-	      e = 0
-	    }
-	  }
-
-	  for (; mLen >= 8; buffer[offset + i] = m & 0xff, i += d, m /= 256, mLen -= 8) {}
-
-	  e = (e << mLen) | m
-	  eLen += mLen
-	  for (; eLen > 0; buffer[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8) {}
-
-	  buffer[offset + i - d] |= s * 128
-	}
-
-
-/***/ },
-/* 6 */
-/***/ function(module, exports) {
-
-	var toString = {}.toString;
-
-	module.exports = Array.isArray || function (arr) {
-	  return toString.call(arr) == '[object Array]';
-	};
-
-
-/***/ },
-/* 7 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var conversions = __webpack_require__(8);
-	var route = __webpack_require__(10);
-
-	var convert = {};
-
-	var models = Object.keys(conversions);
-
-	function wrapRaw(fn) {
-		var wrappedFn = function (args) {
-			if (args === undefined || args === null) {
-				return args;
-			}
-
-			if (arguments.length > 1) {
-				args = Array.prototype.slice.call(arguments);
-			}
-
-			return fn(args);
-		};
-
-		// preserve .conversion property if there is one
-		if ('conversion' in fn) {
-			wrappedFn.conversion = fn.conversion;
-		}
-
-		return wrappedFn;
-	}
-
-	function wrapRounded(fn) {
-		var wrappedFn = function (args) {
-			if (args === undefined || args === null) {
-				return args;
-			}
-
-			if (arguments.length > 1) {
-				args = Array.prototype.slice.call(arguments);
-			}
-
-			var result = fn(args);
-
-			// we're assuming the result is an array here.
-			// see notice in conversions.js; don't use box types
-			// in conversion functions.
-			if (typeof result === 'object') {
-				for (var len = result.length, i = 0; i < len; i++) {
-					result[i] = Math.round(result[i]);
-				}
-			}
-
-			return result;
-		};
-
-		// preserve .conversion property if there is one
-		if ('conversion' in fn) {
-			wrappedFn.conversion = fn.conversion;
-		}
-
-		return wrappedFn;
-	}
-
-	models.forEach(function (fromModel) {
-		convert[fromModel] = {};
-
-		Object.defineProperty(convert[fromModel], 'channels', {value: conversions[fromModel].channels});
-
-		var routes = route(fromModel);
-		var routeModels = Object.keys(routes);
-
-		routeModels.forEach(function (toModel) {
-			var fn = routes[toModel];
-
-			convert[fromModel][toModel] = wrapRounded(fn);
-			convert[fromModel][toModel].raw = wrapRaw(fn);
-		});
-	});
-
-	module.exports = convert;
-
-
-/***/ },
-/* 8 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* MIT license */
-	var cssKeywords = __webpack_require__(9);
-
-	// NOTE: conversions should only return primitive values (i.e. arrays, or
-	//       values that give correct `typeof` results).
-	//       do not use box values types (i.e. Number(), String(), etc.)
-
-	var reverseKeywords = {};
-	for (var key in cssKeywords) {
-		if (cssKeywords.hasOwnProperty(key)) {
-			reverseKeywords[cssKeywords[key].join()] = key;
-		}
-	}
-
-	var convert = module.exports = {
-		rgb: {channels: 3},
-		hsl: {channels: 3},
-		hsv: {channels: 3},
-		hwb: {channels: 3},
-		cmyk: {channels: 4},
-		xyz: {channels: 3},
-		lab: {channels: 3},
-		lch: {channels: 3},
-		hex: {channels: 1},
-		keyword: {channels: 1},
-		ansi16: {channels: 1},
-		ansi256: {channels: 1},
-		hcg: {channels: 3},
-		apple: {channels: 3}
-	};
-
-	// hide .channels property
-	for (var model in convert) {
-		if (convert.hasOwnProperty(model)) {
-			if (!('channels' in convert[model])) {
-				throw new Error('missing channels property: ' + model);
-			}
-
-			var channels = convert[model].channels;
-			delete convert[model].channels;
-			Object.defineProperty(convert[model], 'channels', {value: channels});
-		}
-	}
-
-	convert.rgb.hsl = function (rgb) {
-		var r = rgb[0] / 255;
-		var g = rgb[1] / 255;
-		var b = rgb[2] / 255;
-		var min = Math.min(r, g, b);
-		var max = Math.max(r, g, b);
-		var delta = max - min;
-		var h;
-		var s;
-		var l;
-
-		if (max === min) {
-			h = 0;
-		} else if (r === max) {
-			h = (g - b) / delta;
-		} else if (g === max) {
-			h = 2 + (b - r) / delta;
-		} else if (b === max) {
-			h = 4 + (r - g) / delta;
-		}
-
-		h = Math.min(h * 60, 360);
-
-		if (h < 0) {
-			h += 360;
-		}
-
-		l = (min + max) / 2;
-
-		if (max === min) {
-			s = 0;
-		} else if (l <= 0.5) {
-			s = delta / (max + min);
-		} else {
-			s = delta / (2 - max - min);
-		}
-
-		return [h, s * 100, l * 100];
-	};
-
-	convert.rgb.hsv = function (rgb) {
-		var r = rgb[0];
-		var g = rgb[1];
-		var b = rgb[2];
-		var min = Math.min(r, g, b);
-		var max = Math.max(r, g, b);
-		var delta = max - min;
-		var h;
-		var s;
-		var v;
-
-		if (max === 0) {
-			s = 0;
-		} else {
-			s = (delta / max * 1000) / 10;
-		}
-
-		if (max === min) {
-			h = 0;
-		} else if (r === max) {
-			h = (g - b) / delta;
-		} else if (g === max) {
-			h = 2 + (b - r) / delta;
-		} else if (b === max) {
-			h = 4 + (r - g) / delta;
-		}
-
-		h = Math.min(h * 60, 360);
-
-		if (h < 0) {
-			h += 360;
-		}
-
-		v = ((max / 255) * 1000) / 10;
-
-		return [h, s, v];
-	};
-
-	convert.rgb.hwb = function (rgb) {
-		var r = rgb[0];
-		var g = rgb[1];
-		var b = rgb[2];
-		var h = convert.rgb.hsl(rgb)[0];
-		var w = 1 / 255 * Math.min(r, Math.min(g, b));
-
-		b = 1 - 1 / 255 * Math.max(r, Math.max(g, b));
-
-		return [h, w * 100, b * 100];
-	};
-
-	convert.rgb.cmyk = function (rgb) {
-		var r = rgb[0] / 255;
-		var g = rgb[1] / 255;
-		var b = rgb[2] / 255;
-		var c;
-		var m;
-		var y;
-		var k;
-
-		k = Math.min(1 - r, 1 - g, 1 - b);
-		c = (1 - r - k) / (1 - k) || 0;
-		m = (1 - g - k) / (1 - k) || 0;
-		y = (1 - b - k) / (1 - k) || 0;
-
-		return [c * 100, m * 100, y * 100, k * 100];
-	};
-
-	convert.rgb.keyword = function (rgb) {
-		return reverseKeywords[rgb.join()];
-	};
-
-	convert.keyword.rgb = function (keyword) {
-		return cssKeywords[keyword];
-	};
-
-	convert.rgb.xyz = function (rgb) {
-		var r = rgb[0] / 255;
-		var g = rgb[1] / 255;
-		var b = rgb[2] / 255;
-
-		// assume sRGB
-		r = r > 0.04045 ? Math.pow(((r + 0.055) / 1.055), 2.4) : (r / 12.92);
-		g = g > 0.04045 ? Math.pow(((g + 0.055) / 1.055), 2.4) : (g / 12.92);
-		b = b > 0.04045 ? Math.pow(((b + 0.055) / 1.055), 2.4) : (b / 12.92);
-
-		var x = (r * 0.4124) + (g * 0.3576) + (b * 0.1805);
-		var y = (r * 0.2126) + (g * 0.7152) + (b * 0.0722);
-		var z = (r * 0.0193) + (g * 0.1192) + (b * 0.9505);
-
-		return [x * 100, y * 100, z * 100];
-	};
-
-	convert.rgb.lab = function (rgb) {
-		var xyz = convert.rgb.xyz(rgb);
-		var x = xyz[0];
-		var y = xyz[1];
-		var z = xyz[2];
-		var l;
-		var a;
-		var b;
-
-		x /= 95.047;
-		y /= 100;
-		z /= 108.883;
-
-		x = x > 0.008856 ? Math.pow(x, 1 / 3) : (7.787 * x) + (16 / 116);
-		y = y > 0.008856 ? Math.pow(y, 1 / 3) : (7.787 * y) + (16 / 116);
-		z = z > 0.008856 ? Math.pow(z, 1 / 3) : (7.787 * z) + (16 / 116);
-
-		l = (116 * y) - 16;
-		a = 500 * (x - y);
-		b = 200 * (y - z);
-
-		return [l, a, b];
-	};
-
-	convert.hsl.rgb = function (hsl) {
-		var h = hsl[0] / 360;
-		var s = hsl[1] / 100;
-		var l = hsl[2] / 100;
-		var t1;
-		var t2;
-		var t3;
-		var rgb;
-		var val;
-
-		if (s === 0) {
-			val = l * 255;
-			return [val, val, val];
-		}
-
-		if (l < 0.5) {
-			t2 = l * (1 + s);
-		} else {
-			t2 = l + s - l * s;
-		}
-
-		t1 = 2 * l - t2;
-
-		rgb = [0, 0, 0];
-		for (var i = 0; i < 3; i++) {
-			t3 = h + 1 / 3 * -(i - 1);
-			if (t3 < 0) {
-				t3++;
-			}
-			if (t3 > 1) {
-				t3--;
-			}
-
-			if (6 * t3 < 1) {
-				val = t1 + (t2 - t1) * 6 * t3;
-			} else if (2 * t3 < 1) {
-				val = t2;
-			} else if (3 * t3 < 2) {
-				val = t1 + (t2 - t1) * (2 / 3 - t3) * 6;
-			} else {
-				val = t1;
-			}
-
-			rgb[i] = val * 255;
-		}
-
-		return rgb;
-	};
-
-	convert.hsl.hsv = function (hsl) {
-		var h = hsl[0];
-		var s = hsl[1] / 100;
-		var l = hsl[2] / 100;
-		var sv;
-		var v;
-
-		if (l === 0) {
-			// no need to do calc on black
-			// also avoids divide by 0 error
-			return [0, 0, 0];
-		}
-
-		l *= 2;
-		s *= (l <= 1) ? l : 2 - l;
-		v = (l + s) / 2;
-		sv = (2 * s) / (l + s);
-
-		return [h, sv * 100, v * 100];
-	};
-
-	convert.hsv.rgb = function (hsv) {
-		var h = hsv[0] / 60;
-		var s = hsv[1] / 100;
-		var v = hsv[2] / 100;
-		var hi = Math.floor(h) % 6;
-
-		var f = h - Math.floor(h);
-		var p = 255 * v * (1 - s);
-		var q = 255 * v * (1 - (s * f));
-		var t = 255 * v * (1 - (s * (1 - f)));
-		v *= 255;
-
-		switch (hi) {
-			case 0:
-				return [v, t, p];
-			case 1:
-				return [q, v, p];
-			case 2:
-				return [p, v, t];
-			case 3:
-				return [p, q, v];
-			case 4:
-				return [t, p, v];
-			case 5:
-				return [v, p, q];
-		}
-	};
-
-	convert.hsv.hsl = function (hsv) {
-		var h = hsv[0];
-		var s = hsv[1] / 100;
-		var v = hsv[2] / 100;
-		var sl;
-		var l;
-
-		l = (2 - s) * v;
-		sl = s * v;
-		sl /= (l <= 1) ? l : 2 - l;
-		sl = sl || 0;
-		l /= 2;
-
-		return [h, sl * 100, l * 100];
-	};
-
-	// http://dev.w3.org/csswg/css-color/#hwb-to-rgb
-	convert.hwb.rgb = function (hwb) {
-		var h = hwb[0] / 360;
-		var wh = hwb[1] / 100;
-		var bl = hwb[2] / 100;
-		var ratio = wh + bl;
-		var i;
-		var v;
-		var f;
-		var n;
-
-		// wh + bl cant be > 1
-		if (ratio > 1) {
-			wh /= ratio;
-			bl /= ratio;
-		}
-
-		i = Math.floor(6 * h);
-		v = 1 - bl;
-		f = 6 * h - i;
-
-		if ((i & 0x01) !== 0) {
-			f = 1 - f;
-		}
-
-		n = wh + f * (v - wh); // linear interpolation
-
-		var r;
-		var g;
-		var b;
-		switch (i) {
-			default:
-			case 6:
-			case 0: r = v; g = n; b = wh; break;
-			case 1: r = n; g = v; b = wh; break;
-			case 2: r = wh; g = v; b = n; break;
-			case 3: r = wh; g = n; b = v; break;
-			case 4: r = n; g = wh; b = v; break;
-			case 5: r = v; g = wh; b = n; break;
-		}
-
-		return [r * 255, g * 255, b * 255];
-	};
-
-	convert.cmyk.rgb = function (cmyk) {
-		var c = cmyk[0] / 100;
-		var m = cmyk[1] / 100;
-		var y = cmyk[2] / 100;
-		var k = cmyk[3] / 100;
-		var r;
-		var g;
-		var b;
-
-		r = 1 - Math.min(1, c * (1 - k) + k);
-		g = 1 - Math.min(1, m * (1 - k) + k);
-		b = 1 - Math.min(1, y * (1 - k) + k);
-
-		return [r * 255, g * 255, b * 255];
-	};
-
-	convert.xyz.rgb = function (xyz) {
-		var x = xyz[0] / 100;
-		var y = xyz[1] / 100;
-		var z = xyz[2] / 100;
-		var r;
-		var g;
-		var b;
-
-		r = (x * 3.2406) + (y * -1.5372) + (z * -0.4986);
-		g = (x * -0.9689) + (y * 1.8758) + (z * 0.0415);
-		b = (x * 0.0557) + (y * -0.2040) + (z * 1.0570);
-
-		// assume sRGB
-		r = r > 0.0031308
-			? ((1.055 * Math.pow(r, 1.0 / 2.4)) - 0.055)
-			: r *= 12.92;
-
-		g = g > 0.0031308
-			? ((1.055 * Math.pow(g, 1.0 / 2.4)) - 0.055)
-			: g *= 12.92;
-
-		b = b > 0.0031308
-			? ((1.055 * Math.pow(b, 1.0 / 2.4)) - 0.055)
-			: b *= 12.92;
-
-		r = Math.min(Math.max(0, r), 1);
-		g = Math.min(Math.max(0, g), 1);
-		b = Math.min(Math.max(0, b), 1);
-
-		return [r * 255, g * 255, b * 255];
-	};
-
-	convert.xyz.lab = function (xyz) {
-		var x = xyz[0];
-		var y = xyz[1];
-		var z = xyz[2];
-		var l;
-		var a;
-		var b;
-
-		x /= 95.047;
-		y /= 100;
-		z /= 108.883;
-
-		x = x > 0.008856 ? Math.pow(x, 1 / 3) : (7.787 * x) + (16 / 116);
-		y = y > 0.008856 ? Math.pow(y, 1 / 3) : (7.787 * y) + (16 / 116);
-		z = z > 0.008856 ? Math.pow(z, 1 / 3) : (7.787 * z) + (16 / 116);
-
-		l = (116 * y) - 16;
-		a = 500 * (x - y);
-		b = 200 * (y - z);
-
-		return [l, a, b];
-	};
-
-	convert.lab.xyz = function (lab) {
-		var l = lab[0];
-		var a = lab[1];
-		var b = lab[2];
-		var x;
-		var y;
-		var z;
-		var y2;
-
-		if (l <= 8) {
-			y = (l * 100) / 903.3;
-			y2 = (7.787 * (y / 100)) + (16 / 116);
-		} else {
-			y = 100 * Math.pow((l + 16) / 116, 3);
-			y2 = Math.pow(y / 100, 1 / 3);
-		}
-
-		x = x / 95.047 <= 0.008856
-			? x = (95.047 * ((a / 500) + y2 - (16 / 116))) / 7.787
-			: 95.047 * Math.pow((a / 500) + y2, 3);
-		z = z / 108.883 <= 0.008859
-			? z = (108.883 * (y2 - (b / 200) - (16 / 116))) / 7.787
-			: 108.883 * Math.pow(y2 - (b / 200), 3);
-
-		return [x, y, z];
-	};
-
-	convert.lab.lch = function (lab) {
-		var l = lab[0];
-		var a = lab[1];
-		var b = lab[2];
-		var hr;
-		var h;
-		var c;
-
-		hr = Math.atan2(b, a);
-		h = hr * 360 / 2 / Math.PI;
-
-		if (h < 0) {
-			h += 360;
-		}
-
-		c = Math.sqrt(a * a + b * b);
-
-		return [l, c, h];
-	};
-
-	convert.lch.lab = function (lch) {
-		var l = lch[0];
-		var c = lch[1];
-		var h = lch[2];
-		var a;
-		var b;
-		var hr;
-
-		hr = h / 360 * 2 * Math.PI;
-		a = c * Math.cos(hr);
-		b = c * Math.sin(hr);
-
-		return [l, a, b];
-	};
-
-	convert.rgb.ansi16 = function (args) {
-		var r = args[0];
-		var g = args[1];
-		var b = args[2];
-		var value = 1 in arguments ? arguments[1] : convert.rgb.hsv(args)[2]; // hsv -> ansi16 optimization
-
-		value = Math.round(value / 50);
-
-		if (value === 0) {
-			return 30;
-		}
-
-		var ansi = 30
-			+ ((Math.round(b / 255) << 2)
-			| (Math.round(g / 255) << 1)
-			| Math.round(r / 255));
-
-		if (value === 2) {
-			ansi += 60;
-		}
-
-		return ansi;
-	};
-
-	convert.hsv.ansi16 = function (args) {
-		// optimization here; we already know the value and don't need to get
-		// it converted for us.
-		return convert.rgb.ansi16(convert.hsv.rgb(args), args[2]);
-	};
-
-	convert.rgb.ansi256 = function (args) {
-		var r = args[0];
-		var g = args[1];
-		var b = args[2];
-
-		// we use the extended greyscale palette here, with the exception of
-		// black and white. normal palette only has 4 greyscale shades.
-		if (r === g && g === b) {
-			if (r < 8) {
-				return 16;
-			}
-
-			if (r > 248) {
-				return 231;
-			}
-
-			return Math.round(((r - 8) / 247) * 24) + 232;
-		}
-
-		var ansi = 16
-			+ (36 * Math.round(r / 255 * 5))
-			+ (6 * Math.round(g / 255 * 5))
-			+ Math.round(b / 255 * 5);
-
-		return ansi;
-	};
-
-	convert.ansi16.rgb = function (args) {
-		var color = args % 10;
-
-		// handle greyscale
-		if (color === 0 || color === 7) {
-			if (args > 50) {
-				color += 3.5;
-			}
-
-			color = color / 10.5 * 255;
-
-			return [color, color, color];
-		}
-
-		var mult = (~~(args > 50) + 1) * 0.5;
-		var r = ((color & 1) * mult) * 255;
-		var g = (((color >> 1) & 1) * mult) * 255;
-		var b = (((color >> 2) & 1) * mult) * 255;
-
-		return [r, g, b];
-	};
-
-	convert.ansi256.rgb = function (args) {
-		// handle greyscale
-		if (args >= 232) {
-			var c = (args - 232) * 10 + 8;
-			return [c, c, c];
-		}
-
-		args -= 16;
-
-		var rem;
-		var r = Math.floor(args / 36) / 5 * 255;
-		var g = Math.floor((rem = args % 36) / 6) / 5 * 255;
-		var b = (rem % 6) / 5 * 255;
-
-		return [r, g, b];
-	};
-
-	convert.rgb.hex = function (args) {
-		var integer = ((Math.round(args[0]) & 0xFF) << 16)
-			+ ((Math.round(args[1]) & 0xFF) << 8)
-			+ (Math.round(args[2]) & 0xFF);
-
-		var string = integer.toString(16).toUpperCase();
-		return '000000'.substring(string.length) + string;
-	};
-
-	convert.hex.rgb = function (args) {
-		var match = args.toString(16).match(/[a-f0-9]{6}/i);
-		if (!match) {
-			return [0, 0, 0];
-		}
-
-		var integer = parseInt(match[0], 16);
-		var r = (integer >> 16) & 0xFF;
-		var g = (integer >> 8) & 0xFF;
-		var b = integer & 0xFF;
-
-		return [r, g, b];
-	};
-
-	convert.rgb.hcg = function (rgb) {
-		var r = rgb[0] / 255;
-		var g = rgb[1] / 255;
-		var b = rgb[2] / 255;
-		var max = Math.max(Math.max(r, g), b);
-		var min = Math.min(Math.min(r, g), b);
-		var chroma = (max - min);
-		var grayscale;
-		var hue;
-
-		if (chroma < 1) {
-			grayscale = min / (1 - chroma);
-		} else {
-			grayscale = 0;
-		}
-
-		if (chroma <= 0) {
-			hue = 0;
-		} else
-		if (max === r) {
-			hue = ((g - b) / chroma) % 6;
-		} else
-		if (max === g) {
-			hue = 2 + (b - r) / chroma;
-		} else {
-			hue = 4 + (r - g) / chroma + 4;
-		}
-
-		hue /= 6;
-		hue %= 1;
-
-		return [hue * 360, chroma * 100, grayscale * 100];
-	};
-
-	convert.hsl.hcg = function (hsl) {
-		var s = hsl[1] / 100;
-		var l = hsl[2] / 100;
-		var c = 1;
-		var f = 0;
-
-		if (l < 0.5) {
-			c = 2.0 * s * l;
-		} else {
-			c = 2.0 * s * (1.0 - l);
-		}
-
-		if (c < 1.0) {
-			f = (l - 0.5 * c) / (1.0 - c);
-		}
-
-		return [hsl[0], c * 100, f * 100];
-	};
-
-	convert.hsv.hcg = function (hsv) {
-		var s = hsv[1] / 100;
-		var v = hsv[2] / 100;
-
-		var c = s * v;
-		var f = 0;
-
-		if (c < 1.0) {
-			f = (v - c) / (1 - c);
-		}
-
-		return [hsv[0], c * 100, f * 100];
-	};
-
-	convert.hcg.rgb = function (hcg) {
-		var h = hcg[0] / 360;
-		var c = hcg[1] / 100;
-		var g = hcg[2] / 100;
-
-		if (c === 0.0) {
-			return [g * 255, g * 255, g * 255];
-		}
-
-		var pure = [0, 0, 0];
-		var hi = (h % 1) * 6;
-		var v = hi % 1;
-		var w = 1 - v;
-		var mg = 0;
-
-		switch (Math.floor(hi)) {
-			case 0:
-				pure[0] = 1; pure[1] = v; pure[2] = 0; break;
-			case 1:
-				pure[0] = w; pure[1] = 1; pure[2] = 0; break;
-			case 2:
-				pure[0] = 0; pure[1] = 1; pure[2] = v; break;
-			case 3:
-				pure[0] = 0; pure[1] = w; pure[2] = 1; break;
-			case 4:
-				pure[0] = v; pure[1] = 0; pure[2] = 1; break;
-			default:
-				pure[0] = 1; pure[1] = 0; pure[2] = w;
-		}
-
-		mg = (1.0 - c) * g;
-
-		return [
-			(c * pure[0] + mg) * 255,
-			(c * pure[1] + mg) * 255,
-			(c * pure[2] + mg) * 255
-		];
-	};
-
-	convert.hcg.hsv = function (hcg) {
-		var c = hcg[1] / 100;
-		var g = hcg[2] / 100;
-
-		var v = c + g * (1.0 - c);
-		var f = 0;
-
-		if (v > 0.0) {
-			f = c / v;
-		}
-
-		return [hcg[0], f * 100, v * 100];
-	};
-
-	convert.hcg.hsl = function (hcg) {
-		var c = hcg[1] / 100;
-		var g = hcg[2] / 100;
-
-		var l = g * (1.0 - c) + 0.5 * c;
-		var s = 0;
-
-		if (l > 0.0 && l < 0.5) {
-			s = c / (2 * l);
-		} else
-		if (l >= 0.5 && l < 1.0) {
-			s = c / (2 * (1 - l));
-		}
-
-		return [hcg[0], s * 100, l * 100];
-	};
-
-	convert.hcg.hwb = function (hcg) {
-		var c = hcg[1] / 100;
-		var g = hcg[2] / 100;
-		var v = c + g * (1.0 - c);
-		return [hcg[0], (v - c) * 100, (1 - v) * 100];
-	};
-
-	convert.hwb.hcg = function (hwb) {
-		var w = hwb[1] / 100;
-		var b = hwb[2] / 100;
-		var v = 1 - b;
-		var c = v - w;
-		var g = 0;
-
-		if (c < 1) {
-			g = (v - c) / (1 - c);
-		}
-
-		return [hwb[0], c * 100, g * 100];
-	};
-
-	convert.apple.rgb = function (apple) {
-		return [(apple[0] / 65535) * 255, (apple[1] / 65535) * 255, (apple[2] / 65535) * 255];
-	};
-
-	convert.rgb.apple = function (rgb) {
-		return [(rgb[0] / 255) * 65535, (rgb[1] / 255) * 65535, (rgb[2] / 255) * 65535];
-	};
-
-
-/***/ },
-/* 9 */
-/***/ function(module, exports) {
-
-	module.exports = {
-		aliceblue: [240, 248, 255],
-		antiquewhite: [250, 235, 215],
-		aqua: [0, 255, 255],
-		aquamarine: [127, 255, 212],
-		azure: [240, 255, 255],
-		beige: [245, 245, 220],
-		bisque: [255, 228, 196],
-		black: [0, 0, 0],
-		blanchedalmond: [255, 235, 205],
-		blue: [0, 0, 255],
-		blueviolet: [138, 43, 226],
-		brown: [165, 42, 42],
-		burlywood: [222, 184, 135],
-		cadetblue: [95, 158, 160],
-		chartreuse: [127, 255, 0],
-		chocolate: [210, 105, 30],
-		coral: [255, 127, 80],
-		cornflowerblue: [100, 149, 237],
-		cornsilk: [255, 248, 220],
-		crimson: [220, 20, 60],
-		cyan: [0, 255, 255],
-		darkblue: [0, 0, 139],
-		darkcyan: [0, 139, 139],
-		darkgoldenrod: [184, 134, 11],
-		darkgray: [169, 169, 169],
-		darkgreen: [0, 100, 0],
-		darkgrey: [169, 169, 169],
-		darkkhaki: [189, 183, 107],
-		darkmagenta: [139, 0, 139],
-		darkolivegreen: [85, 107, 47],
-		darkorange: [255, 140, 0],
-		darkorchid: [153, 50, 204],
-		darkred: [139, 0, 0],
-		darksalmon: [233, 150, 122],
-		darkseagreen: [143, 188, 143],
-		darkslateblue: [72, 61, 139],
-		darkslategray: [47, 79, 79],
-		darkslategrey: [47, 79, 79],
-		darkturquoise: [0, 206, 209],
-		darkviolet: [148, 0, 211],
-		deeppink: [255, 20, 147],
-		deepskyblue: [0, 191, 255],
-		dimgray: [105, 105, 105],
-		dimgrey: [105, 105, 105],
-		dodgerblue: [30, 144, 255],
-		firebrick: [178, 34, 34],
-		floralwhite: [255, 250, 240],
-		forestgreen: [34, 139, 34],
-		fuchsia: [255, 0, 255],
-		gainsboro: [220, 220, 220],
-		ghostwhite: [248, 248, 255],
-		gold: [255, 215, 0],
-		goldenrod: [218, 165, 32],
-		gray: [128, 128, 128],
-		green: [0, 128, 0],
-		greenyellow: [173, 255, 47],
-		grey: [128, 128, 128],
-		honeydew: [240, 255, 240],
-		hotpink: [255, 105, 180],
-		indianred: [205, 92, 92],
-		indigo: [75, 0, 130],
-		ivory: [255, 255, 240],
-		khaki: [240, 230, 140],
-		lavender: [230, 230, 250],
-		lavenderblush: [255, 240, 245],
-		lawngreen: [124, 252, 0],
-		lemonchiffon: [255, 250, 205],
-		lightblue: [173, 216, 230],
-		lightcoral: [240, 128, 128],
-		lightcyan: [224, 255, 255],
-		lightgoldenrodyellow: [250, 250, 210],
-		lightgray: [211, 211, 211],
-		lightgreen: [144, 238, 144],
-		lightgrey: [211, 211, 211],
-		lightpink: [255, 182, 193],
-		lightsalmon: [255, 160, 122],
-		lightseagreen: [32, 178, 170],
-		lightskyblue: [135, 206, 250],
-		lightslategray: [119, 136, 153],
-		lightslategrey: [119, 136, 153],
-		lightsteelblue: [176, 196, 222],
-		lightyellow: [255, 255, 224],
-		lime: [0, 255, 0],
-		limegreen: [50, 205, 50],
-		linen: [250, 240, 230],
-		magenta: [255, 0, 255],
-		maroon: [128, 0, 0],
-		mediumaquamarine: [102, 205, 170],
-		mediumblue: [0, 0, 205],
-		mediumorchid: [186, 85, 211],
-		mediumpurple: [147, 112, 219],
-		mediumseagreen: [60, 179, 113],
-		mediumslateblue: [123, 104, 238],
-		mediumspringgreen: [0, 250, 154],
-		mediumturquoise: [72, 209, 204],
-		mediumvioletred: [199, 21, 133],
-		midnightblue: [25, 25, 112],
-		mintcream: [245, 255, 250],
-		mistyrose: [255, 228, 225],
-		moccasin: [255, 228, 181],
-		navajowhite: [255, 222, 173],
-		navy: [0, 0, 128],
-		oldlace: [253, 245, 230],
-		olive: [128, 128, 0],
-		olivedrab: [107, 142, 35],
-		orange: [255, 165, 0],
-		orangered: [255, 69, 0],
-		orchid: [218, 112, 214],
-		palegoldenrod: [238, 232, 170],
-		palegreen: [152, 251, 152],
-		paleturquoise: [175, 238, 238],
-		palevioletred: [219, 112, 147],
-		papayawhip: [255, 239, 213],
-		peachpuff: [255, 218, 185],
-		peru: [205, 133, 63],
-		pink: [255, 192, 203],
-		plum: [221, 160, 221],
-		powderblue: [176, 224, 230],
-		purple: [128, 0, 128],
-		rebeccapurple: [102, 51, 153],
-		red: [255, 0, 0],
-		rosybrown: [188, 143, 143],
-		royalblue: [65, 105, 225],
-		saddlebrown: [139, 69, 19],
-		salmon: [250, 128, 114],
-		sandybrown: [244, 164, 96],
-		seagreen: [46, 139, 87],
-		seashell: [255, 245, 238],
-		sienna: [160, 82, 45],
-		silver: [192, 192, 192],
-		skyblue: [135, 206, 235],
-		slateblue: [106, 90, 205],
-		slategray: [112, 128, 144],
-		slategrey: [112, 128, 144],
-		snow: [255, 250, 250],
-		springgreen: [0, 255, 127],
-		steelblue: [70, 130, 180],
-		tan: [210, 180, 140],
-		teal: [0, 128, 128],
-		thistle: [216, 191, 216],
-		tomato: [255, 99, 71],
-		turquoise: [64, 224, 208],
-		violet: [238, 130, 238],
-		wheat: [245, 222, 179],
-		white: [255, 255, 255],
-		whitesmoke: [245, 245, 245],
-		yellow: [255, 255, 0],
-		yellowgreen: [154, 205, 50]
-	};
-
-
-
-/***/ },
-/* 10 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var conversions = __webpack_require__(8);
-
-	/*
-		this function routes a model to all other models.
-
-		all functions that are routed have a property `.conversion` attached
-		to the returned synthetic function. This property is an array
-		of strings, each with the steps in between the 'from' and 'to'
-		color models (inclusive).
-
-		conversions that are not possible simply are not included.
-	*/
-
-	// https://jsperf.com/object-keys-vs-for-in-with-closure/3
-	var models = Object.keys(conversions);
-
-	function buildGraph() {
-		var graph = {};
-
-		for (var len = models.length, i = 0; i < len; i++) {
-			graph[models[i]] = {
-				// http://jsperf.com/1-vs-infinity
-				// micro-opt, but this is simple.
-				distance: -1,
-				parent: null
-			};
-		}
-
-		return graph;
-	}
-
-	// https://en.wikipedia.org/wiki/Breadth-first_search
-	function deriveBFS(fromModel) {
-		var graph = buildGraph();
-		var queue = [fromModel]; // unshift -> queue -> pop
-
-		graph[fromModel].distance = 0;
-
-		while (queue.length) {
-			var current = queue.pop();
-			var adjacents = Object.keys(conversions[current]);
-
-			for (var len = adjacents.length, i = 0; i < len; i++) {
-				var adjacent = adjacents[i];
-				var node = graph[adjacent];
-
-				if (node.distance === -1) {
-					node.distance = graph[current].distance + 1;
-					node.parent = current;
-					queue.unshift(adjacent);
-				}
-			}
-		}
-
-		return graph;
-	}
-
-	function link(from, to) {
-		return function (args) {
-			return to(from(args));
-		};
-	}
-
-	function wrapConversion(toModel, graph) {
-		var path = [graph[toModel].parent, toModel];
-		var fn = conversions[graph[toModel].parent][toModel];
-
-		var cur = graph[toModel].parent;
-		while (graph[cur].parent) {
-			path.unshift(graph[cur].parent);
-			fn = link(conversions[graph[cur].parent][cur], fn);
-			cur = graph[cur].parent;
-		}
-
-		fn.conversion = path;
-		return fn;
-	}
-
-	module.exports = function (fromModel) {
-		var graph = deriveBFS(fromModel);
-		var conversion = {};
-
-		var models = Object.keys(graph);
-		for (var len = models.length, i = 0; i < len; i++) {
-			var toModel = models[i];
-			var node = graph[toModel];
-
-			if (node.parent === null) {
-				// no possible conversion, or this node is the source model.
-				continue;
-			}
-
-			conversion[toModel] = wrapConversion(toModel, graph);
-		}
-
-		return conversion;
-	};
-
-
-
-/***/ },
-/* 11 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* MIT license */
-	var colorNames = __webpack_require__(12);
-
-	module.exports = {
-	   getRgba: getRgba,
-	   getHsla: getHsla,
-	   getRgb: getRgb,
-	   getHsl: getHsl,
-	   getHwb: getHwb,
-	   getAlpha: getAlpha,
-
-	   hexString: hexString,
-	   rgbString: rgbString,
-	   rgbaString: rgbaString,
-	   percentString: percentString,
-	   percentaString: percentaString,
-	   hslString: hslString,
-	   hslaString: hslaString,
-	   hwbString: hwbString,
-	   keyword: keyword
-	}
-
-	function getRgba(string) {
-	   if (!string) {
-	      return;
-	   }
-	   var abbr =  /^#([a-fA-F0-9]{3})$/,
-	       hex =  /^#([a-fA-F0-9]{6})$/,
-	       rgba = /^rgba?\(\s*([+-]?\d+)\s*,\s*([+-]?\d+)\s*,\s*([+-]?\d+)\s*(?:,\s*([+-]?[\d\.]+)\s*)?\)$/,
-	       per = /^rgba?\(\s*([+-]?[\d\.]+)\%\s*,\s*([+-]?[\d\.]+)\%\s*,\s*([+-]?[\d\.]+)\%\s*(?:,\s*([+-]?[\d\.]+)\s*)?\)$/,
-	       keyword = /(\D+)/;
-
-	   var rgb = [0, 0, 0],
-	       a = 1,
-	       match = string.match(abbr);
-	   if (match) {
-	      match = match[1];
-	      for (var i = 0; i < rgb.length; i++) {
-	         rgb[i] = parseInt(match[i] + match[i], 16);
-	      }
-	   }
-	   else if (match = string.match(hex)) {
-	      match = match[1];
-	      for (var i = 0; i < rgb.length; i++) {
-	         rgb[i] = parseInt(match.slice(i * 2, i * 2 + 2), 16);
-	      }
-	   }
-	   else if (match = string.match(rgba)) {
-	      for (var i = 0; i < rgb.length; i++) {
-	         rgb[i] = parseInt(match[i + 1]);
-	      }
-	      a = parseFloat(match[4]);
-	   }
-	   else if (match = string.match(per)) {
-	      for (var i = 0; i < rgb.length; i++) {
-	         rgb[i] = Math.round(parseFloat(match[i + 1]) * 2.55);
-	      }
-	      a = parseFloat(match[4]);
-	   }
-	   else if (match = string.match(keyword)) {
-	      if (match[1] == "transparent") {
-	         return [0, 0, 0, 0];
-	      }
-	      rgb = colorNames[match[1]];
-	      if (!rgb) {
-	         return;
-	      }
-	   }
-
-	   for (var i = 0; i < rgb.length; i++) {
-	      rgb[i] = scale(rgb[i], 0, 255);
-	   }
-	   if (!a && a != 0) {
-	      a = 1;
-	   }
-	   else {
-	      a = scale(a, 0, 1);
-	   }
-	   rgb[3] = a;
-	   return rgb;
-	}
-
-	function getHsla(string) {
-	   if (!string) {
-	      return;
-	   }
-	   var hsl = /^hsla?\(\s*([+-]?\d+)(?:deg)?\s*,\s*([+-]?[\d\.]+)%\s*,\s*([+-]?[\d\.]+)%\s*(?:,\s*([+-]?[\d\.]+)\s*)?\)/;
-	   var match = string.match(hsl);
-	   if (match) {
-	      var alpha = parseFloat(match[4]);
-	      var h = scale(parseInt(match[1]), 0, 360),
-	          s = scale(parseFloat(match[2]), 0, 100),
-	          l = scale(parseFloat(match[3]), 0, 100),
-	          a = scale(isNaN(alpha) ? 1 : alpha, 0, 1);
-	      return [h, s, l, a];
-	   }
-	}
-
-	function getHwb(string) {
-	   if (!string) {
-	      return;
-	   }
-	   var hwb = /^hwb\(\s*([+-]?\d+)(?:deg)?\s*,\s*([+-]?[\d\.]+)%\s*,\s*([+-]?[\d\.]+)%\s*(?:,\s*([+-]?[\d\.]+)\s*)?\)/;
-	   var match = string.match(hwb);
-	   if (match) {
-	    var alpha = parseFloat(match[4]);
-	      var h = scale(parseInt(match[1]), 0, 360),
-	          w = scale(parseFloat(match[2]), 0, 100),
-	          b = scale(parseFloat(match[3]), 0, 100),
-	          a = scale(isNaN(alpha) ? 1 : alpha, 0, 1);
-	      return [h, w, b, a];
-	   }
-	}
-
-	function getRgb(string) {
-	   var rgba = getRgba(string);
-	   return rgba && rgba.slice(0, 3);
-	}
-
-	function getHsl(string) {
-	  var hsla = getHsla(string);
-	  return hsla && hsla.slice(0, 3);
-	}
-
-	function getAlpha(string) {
-	   var vals = getRgba(string);
-	   if (vals) {
-	      return vals[3];
-	   }
-	   else if (vals = getHsla(string)) {
-	      return vals[3];
-	   }
-	   else if (vals = getHwb(string)) {
-	      return vals[3];
-	   }
-	}
-
-	// generators
-	function hexString(rgb) {
-	   return "#" + hexDouble(rgb[0]) + hexDouble(rgb[1])
-	              + hexDouble(rgb[2]);
-	}
-
-	function rgbString(rgba, alpha) {
-	   if (alpha < 1 || (rgba[3] && rgba[3] < 1)) {
-	      return rgbaString(rgba, alpha);
-	   }
-	   return "rgb(" + rgba[0] + ", " + rgba[1] + ", " + rgba[2] + ")";
-	}
-
-	function rgbaString(rgba, alpha) {
-	   if (alpha === undefined) {
-	      alpha = (rgba[3] !== undefined ? rgba[3] : 1);
-	   }
-	   return "rgba(" + rgba[0] + ", " + rgba[1] + ", " + rgba[2]
-	           + ", " + alpha + ")";
-	}
-
-	function percentString(rgba, alpha) {
-	   if (alpha < 1 || (rgba[3] && rgba[3] < 1)) {
-	      return percentaString(rgba, alpha);
-	   }
-	   var r = Math.round(rgba[0]/255 * 100),
-	       g = Math.round(rgba[1]/255 * 100),
-	       b = Math.round(rgba[2]/255 * 100);
-
-	   return "rgb(" + r + "%, " + g + "%, " + b + "%)";
-	}
-
-	function percentaString(rgba, alpha) {
-	   var r = Math.round(rgba[0]/255 * 100),
-	       g = Math.round(rgba[1]/255 * 100),
-	       b = Math.round(rgba[2]/255 * 100);
-	   return "rgba(" + r + "%, " + g + "%, " + b + "%, " + (alpha || rgba[3] || 1) + ")";
-	}
-
-	function hslString(hsla, alpha) {
-	   if (alpha < 1 || (hsla[3] && hsla[3] < 1)) {
-	      return hslaString(hsla, alpha);
-	   }
-	   return "hsl(" + hsla[0] + ", " + hsla[1] + "%, " + hsla[2] + "%)";
-	}
-
-	function hslaString(hsla, alpha) {
-	   if (alpha === undefined) {
-	      alpha = (hsla[3] !== undefined ? hsla[3] : 1);
-	   }
-	   return "hsla(" + hsla[0] + ", " + hsla[1] + "%, " + hsla[2] + "%, "
-	           + alpha + ")";
-	}
-
-	// hwb is a bit different than rgb(a) & hsl(a) since there is no alpha specific syntax
-	// (hwb have alpha optional & 1 is default value)
-	function hwbString(hwb, alpha) {
-	   if (alpha === undefined) {
-	      alpha = (hwb[3] !== undefined ? hwb[3] : 1);
-	   }
-	   return "hwb(" + hwb[0] + ", " + hwb[1] + "%, " + hwb[2] + "%"
-	           + (alpha !== undefined && alpha !== 1 ? ", " + alpha : "") + ")";
-	}
-
-	function keyword(rgb) {
-	  return reverseNames[rgb.slice(0, 3)];
-	}
-
-	// helpers
-	function scale(num, min, max) {
-	   return Math.min(Math.max(min, num), max);
-	}
-
-	function hexDouble(num) {
-	  var str = num.toString(16).toUpperCase();
-	  return (str.length < 2) ? "0" + str : str;
-	}
-
-
-	//create a list of reverse color names
-	var reverseNames = {};
-	for (var name in colorNames) {
-	   reverseNames[colorNames[name]] = name;
-	}
-
-
-/***/ },
-/* 12 */
-/***/ function(module, exports) {
-
-	module.exports = {
-		"aliceblue": [240, 248, 255],
-		"antiquewhite": [250, 235, 215],
-		"aqua": [0, 255, 255],
-		"aquamarine": [127, 255, 212],
-		"azure": [240, 255, 255],
-		"beige": [245, 245, 220],
-		"bisque": [255, 228, 196],
-		"black": [0, 0, 0],
-		"blanchedalmond": [255, 235, 205],
-		"blue": [0, 0, 255],
-		"blueviolet": [138, 43, 226],
-		"brown": [165, 42, 42],
-		"burlywood": [222, 184, 135],
-		"cadetblue": [95, 158, 160],
-		"chartreuse": [127, 255, 0],
-		"chocolate": [210, 105, 30],
-		"coral": [255, 127, 80],
-		"cornflowerblue": [100, 149, 237],
-		"cornsilk": [255, 248, 220],
-		"crimson": [220, 20, 60],
-		"cyan": [0, 255, 255],
-		"darkblue": [0, 0, 139],
-		"darkcyan": [0, 139, 139],
-		"darkgoldenrod": [184, 134, 11],
-		"darkgray": [169, 169, 169],
-		"darkgreen": [0, 100, 0],
-		"darkgrey": [169, 169, 169],
-		"darkkhaki": [189, 183, 107],
-		"darkmagenta": [139, 0, 139],
-		"darkolivegreen": [85, 107, 47],
-		"darkorange": [255, 140, 0],
-		"darkorchid": [153, 50, 204],
-		"darkred": [139, 0, 0],
-		"darksalmon": [233, 150, 122],
-		"darkseagreen": [143, 188, 143],
-		"darkslateblue": [72, 61, 139],
-		"darkslategray": [47, 79, 79],
-		"darkslategrey": [47, 79, 79],
-		"darkturquoise": [0, 206, 209],
-		"darkviolet": [148, 0, 211],
-		"deeppink": [255, 20, 147],
-		"deepskyblue": [0, 191, 255],
-		"dimgray": [105, 105, 105],
-		"dimgrey": [105, 105, 105],
-		"dodgerblue": [30, 144, 255],
-		"firebrick": [178, 34, 34],
-		"floralwhite": [255, 250, 240],
-		"forestgreen": [34, 139, 34],
-		"fuchsia": [255, 0, 255],
-		"gainsboro": [220, 220, 220],
-		"ghostwhite": [248, 248, 255],
-		"gold": [255, 215, 0],
-		"goldenrod": [218, 165, 32],
-		"gray": [128, 128, 128],
-		"green": [0, 128, 0],
-		"greenyellow": [173, 255, 47],
-		"grey": [128, 128, 128],
-		"honeydew": [240, 255, 240],
-		"hotpink": [255, 105, 180],
-		"indianred": [205, 92, 92],
-		"indigo": [75, 0, 130],
-		"ivory": [255, 255, 240],
-		"khaki": [240, 230, 140],
-		"lavender": [230, 230, 250],
-		"lavenderblush": [255, 240, 245],
-		"lawngreen": [124, 252, 0],
-		"lemonchiffon": [255, 250, 205],
-		"lightblue": [173, 216, 230],
-		"lightcoral": [240, 128, 128],
-		"lightcyan": [224, 255, 255],
-		"lightgoldenrodyellow": [250, 250, 210],
-		"lightgray": [211, 211, 211],
-		"lightgreen": [144, 238, 144],
-		"lightgrey": [211, 211, 211],
-		"lightpink": [255, 182, 193],
-		"lightsalmon": [255, 160, 122],
-		"lightseagreen": [32, 178, 170],
-		"lightskyblue": [135, 206, 250],
-		"lightslategray": [119, 136, 153],
-		"lightslategrey": [119, 136, 153],
-		"lightsteelblue": [176, 196, 222],
-		"lightyellow": [255, 255, 224],
-		"lime": [0, 255, 0],
-		"limegreen": [50, 205, 50],
-		"linen": [250, 240, 230],
-		"magenta": [255, 0, 255],
-		"maroon": [128, 0, 0],
-		"mediumaquamarine": [102, 205, 170],
-		"mediumblue": [0, 0, 205],
-		"mediumorchid": [186, 85, 211],
-		"mediumpurple": [147, 112, 219],
-		"mediumseagreen": [60, 179, 113],
-		"mediumslateblue": [123, 104, 238],
-		"mediumspringgreen": [0, 250, 154],
-		"mediumturquoise": [72, 209, 204],
-		"mediumvioletred": [199, 21, 133],
-		"midnightblue": [25, 25, 112],
-		"mintcream": [245, 255, 250],
-		"mistyrose": [255, 228, 225],
-		"moccasin": [255, 228, 181],
-		"navajowhite": [255, 222, 173],
-		"navy": [0, 0, 128],
-		"oldlace": [253, 245, 230],
-		"olive": [128, 128, 0],
-		"olivedrab": [107, 142, 35],
-		"orange": [255, 165, 0],
-		"orangered": [255, 69, 0],
-		"orchid": [218, 112, 214],
-		"palegoldenrod": [238, 232, 170],
-		"palegreen": [152, 251, 152],
-		"paleturquoise": [175, 238, 238],
-		"palevioletred": [219, 112, 147],
-		"papayawhip": [255, 239, 213],
-		"peachpuff": [255, 218, 185],
-		"peru": [205, 133, 63],
-		"pink": [255, 192, 203],
-		"plum": [221, 160, 221],
-		"powderblue": [176, 224, 230],
-		"purple": [128, 0, 128],
-		"rebeccapurple": [102, 51, 153],
-		"red": [255, 0, 0],
-		"rosybrown": [188, 143, 143],
-		"royalblue": [65, 105, 225],
-		"saddlebrown": [139, 69, 19],
-		"salmon": [250, 128, 114],
-		"sandybrown": [244, 164, 96],
-		"seagreen": [46, 139, 87],
-		"seashell": [255, 245, 238],
-		"sienna": [160, 82, 45],
-		"silver": [192, 192, 192],
-		"skyblue": [135, 206, 235],
-		"slateblue": [106, 90, 205],
-		"slategray": [112, 128, 144],
-		"slategrey": [112, 128, 144],
-		"snow": [255, 250, 250],
-		"springgreen": [0, 255, 127],
-		"steelblue": [70, 130, 180],
-		"tan": [210, 180, 140],
-		"teal": [0, 128, 128],
-		"thistle": [216, 191, 216],
-		"tomato": [255, 99, 71],
-		"turquoise": [64, 224, 208],
-		"violet": [238, 130, 238],
-		"wheat": [245, 222, 179],
-		"white": [255, 255, 255],
-		"whitesmoke": [245, 245, 245],
-		"yellow": [255, 255, 0],
-		"yellowgreen": [154, 205, 50]
-	};
-
-/***/ },
-/* 13 */
+/***/ 13:
 /***/ function(module, exports) {
 
 	/**
@@ -4459,7 +567,8 @@
 
 
 /***/ },
-/* 14 */
+
+/***/ 14:
 /***/ function(module, exports) {
 
 	var load = function(cb) {
@@ -4483,7 +592,8 @@
 
 
 /***/ },
-/* 15 */
+
+/***/ 15:
 /***/ function(module, exports, __webpack_require__) {
 
 	var range = __webpack_require__(13);
@@ -4509,7 +619,8 @@
 
 
 /***/ },
-/* 16 */
+
+/***/ 16:
 /***/ function(module, exports) {
 
 	function toRad(r) {
@@ -4536,7 +647,8 @@
 
 
 /***/ },
-/* 17 */
+
+/***/ 17:
 /***/ function(module, exports) {
 
 	function random(min, max) {
@@ -4559,10 +671,11 @@
 
 
 /***/ },
-/* 18 */
+
+/***/ 18:
 /***/ function(module, exports, __webpack_require__) {
 
-	var colorify = __webpack_require__(1);
+	var tinycolor = __webpack_require__(378);
 	var range = __webpack_require__(13);
 	var vector = __webpack_require__(16);
 	var utils = __webpack_require__(17);
@@ -4581,10 +694,20 @@
 	  };
 	}
 
+	function generateColor(color, n, partials) {
+	  var cool = tinycolor(color);
+	  partials.forEach(function(p, i) {
+	    p.color = cool
+	      .spin(1.1)
+	      .darken(i / n)
+	      .toString();
+	  });
+	}
+
 	function renderPoint(ctx, p) {
 	  ctx.beginPath();
 	  ctx.fillStyle = p.color;
-	  ctx.arc(p.x, p.y, p.radius, 0, toRad(30), 1);
+	  ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
 	  ctx.fill();
 	  ctx.closePath();
 	};
@@ -4596,15 +719,13 @@
 	  var point = path[approaching];
 	  var p;
 	  var dV;
-	  var coz = colorify(color);
 
 	  range(n)
 	    .forEach(function(i) {
 	      var p = {
 	        x: x,
 	        y: y,
-	        radius:  2 - i/n,
-	        color: coz.rotate(1).darken(i / n * 0.1).hslString()
+	        radius:  2 - i/n
 	      };
 
 	      if (i === 0) {
@@ -4617,46 +738,2208 @@
 	      partials[i] = p;
 	    });
 
-	  return function(ctx) {
-	    ctx.save();
-	    ctx.lineCap = 'round';
-	    ctx.lineJoin = 'round';
+	  generateColor(color, n, partials);
 
-	    var point = path[approaching];
-	    var first = partials[0];
-	    var dV = calculateDeltaVeclocity(first, point, speed);
-	    first.dx = (first.dx + dV.dx) * first.friction;
-	    first.dy = (first.dy + dV.dy) * first.friction;
-	    first.x += first.dx;
-	    first.y += first.dy;
-	    renderPoint(ctx, first);
+	  return {
+	    draw: function(ctx) {
+	      ctx.save();
 
-	    var p;
-	    var next;
-	    for (var j = 0; j < n - 1; j++) {
-	      p = partials[j];
-	      next = partials[j + 1];
-	      next.x += (p.x - next.x) * 0.7;
-	      next.y += (p.y - next.y) * 0.7;
-	      renderPoint(ctx, next);
+	      var point = path[approaching];
+	      var first = partials[0];
+	      var dV = calculateDeltaVeclocity(first, point, speed);
+	      first.dx = (first.dx + dV.dx) * first.friction;
+	      first.dy = (first.dy + dV.dy) * first.friction;
+	      first.x += first.dx;
+	      first.y += first.dy;
+	      renderPoint(ctx, first);
+
+	      var p;
+	      var next;
+	      for (var j = 0; j < n - 1; j++) {
+	        p = partials[j];
+	        next = partials[j + 1];
+	        next.x += (p.x - next.x) * 0.7;
+	        next.y += (p.y - next.y) * 0.7;
+	        renderPoint(ctx, next);
+	      }
+
+	      if (distance(first, point) < 12) {
+	        approaching = Math.random() > 0.96 ?
+	        roundRandom(0, nPath - 1) :
+	        Math.random() > 0.96 ?
+	          (approaching - 1) :
+	          (approaching + 1) % nPath;
+
+	        if (approaching < 0) approaching += nPath;
+	      }
+
+	      ctx.restore();
+	    },
+	    color: function(color) {
+	      generateColor(color, n, partials);
 	    }
-
-	    if (distance(first, point) < /* A */10) {
-	      approaching = Math.random() > 0.96 ?
-	      roundRandom(0, nPath - 1) :
-	      Math.random() > 0.96 ?
-	        (approaching - 1) :
-	        (approaching + 1) % nPath;
-
-	      if (approaching < 0) approaching += nPath;
-	    }
-
-	    ctx.restore();
-	  }
+	  };
 	}
 
 	module.exports = worm;
 
 
+/***/ },
+
+/***/ 23:
+/***/ function(module, exports) {
+
+	module.exports = function(module) {
+		if(!module.webpackPolyfill) {
+			module.deprecate = function() {};
+			module.paths = [];
+			// module.parent = undefined by default
+			module.children = [];
+			module.webpackPolyfill = 1;
+		}
+		return module;
+	}
+
+
+/***/ },
+
+/***/ 360:
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var Observable_1 = __webpack_require__(361);
+	var tryCatch_1 = __webpack_require__(369);
+	var errorObject_1 = __webpack_require__(370);
+	var Subscription_1 = __webpack_require__(366);
+	function isNodeStyleEventEmmitter(sourceObj) {
+	    return !!sourceObj && typeof sourceObj.addListener === 'function' && typeof sourceObj.removeListener === 'function';
+	}
+	function isJQueryStyleEventEmitter(sourceObj) {
+	    return !!sourceObj && typeof sourceObj.on === 'function' && typeof sourceObj.off === 'function';
+	}
+	function isNodeList(sourceObj) {
+	    return !!sourceObj && sourceObj.toString() === '[object NodeList]';
+	}
+	function isHTMLCollection(sourceObj) {
+	    return !!sourceObj && sourceObj.toString() === '[object HTMLCollection]';
+	}
+	function isEventTarget(sourceObj) {
+	    return !!sourceObj && typeof sourceObj.addEventListener === 'function' && typeof sourceObj.removeEventListener === 'function';
+	}
+	/**
+	 * We need this JSDoc comment for affecting ESDoc.
+	 * @extends {Ignored}
+	 * @hide true
+	 */
+	var FromEventObservable = (function (_super) {
+	    __extends(FromEventObservable, _super);
+	    function FromEventObservable(sourceObj, eventName, selector) {
+	        _super.call(this);
+	        this.sourceObj = sourceObj;
+	        this.eventName = eventName;
+	        this.selector = selector;
+	    }
+	    /**
+	     * Creates an Observable that emits events of a specific type coming from the
+	     * given event target.
+	     *
+	     * <span class="informal">Creates an Observable from DOM events, or Node
+	     * EventEmitter events or others.</span>
+	     *
+	     * <img src="./img/fromEvent.png" width="100%">
+	     *
+	     * Creates an Observable by attaching an event listener to an "event target",
+	     * which may be an object with `addEventListener` and `removeEventListener`,
+	     * a Node.js EventEmitter, a jQuery style EventEmitter, a NodeList from the
+	     * DOM, or an HTMLCollection from the DOM. The event handler is attached when
+	     * the output Observable is subscribed, and removed when the Subscription is
+	     * unsubscribed.
+	     *
+	     * @example <caption>Emits clicks happening on the DOM document</caption>
+	     * var clicks = Rx.Observable.fromEvent(document, 'click');
+	     * clicks.subscribe(x => console.log(x));
+	     *
+	     * @see {@link from}
+	     * @see {@link fromEventPattern}
+	     *
+	     * @param {EventTargetLike} target The DOMElement, event target, Node.js
+	     * EventEmitter, NodeList or HTMLCollection to attach the event handler to.
+	     * @param {string} eventName The event name of interest, being emitted by the
+	     * `target`.
+	     * @param {function(...args: any): T} [selector] An optional function to
+	     * post-process results. It takes the arguments from the event handler and
+	     * should return a single value.
+	     * @return {Observable<T>}
+	     * @static true
+	     * @name fromEvent
+	     * @owner Observable
+	     */
+	    FromEventObservable.create = function (target, eventName, selector) {
+	        return new FromEventObservable(target, eventName, selector);
+	    };
+	    FromEventObservable.setupSubscription = function (sourceObj, eventName, handler, subscriber) {
+	        var unsubscribe;
+	        if (isNodeList(sourceObj) || isHTMLCollection(sourceObj)) {
+	            for (var i = 0, len = sourceObj.length; i < len; i++) {
+	                FromEventObservable.setupSubscription(sourceObj[i], eventName, handler, subscriber);
+	            }
+	        }
+	        else if (isEventTarget(sourceObj)) {
+	            var source_1 = sourceObj;
+	            sourceObj.addEventListener(eventName, handler);
+	            unsubscribe = function () { return source_1.removeEventListener(eventName, handler); };
+	        }
+	        else if (isJQueryStyleEventEmitter(sourceObj)) {
+	            var source_2 = sourceObj;
+	            sourceObj.on(eventName, handler);
+	            unsubscribe = function () { return source_2.off(eventName, handler); };
+	        }
+	        else if (isNodeStyleEventEmmitter(sourceObj)) {
+	            var source_3 = sourceObj;
+	            sourceObj.addListener(eventName, handler);
+	            unsubscribe = function () { return source_3.removeListener(eventName, handler); };
+	        }
+	        subscriber.add(new Subscription_1.Subscription(unsubscribe));
+	    };
+	    FromEventObservable.prototype._subscribe = function (subscriber) {
+	        var sourceObj = this.sourceObj;
+	        var eventName = this.eventName;
+	        var selector = this.selector;
+	        var handler = selector ? function () {
+	            var args = [];
+	            for (var _i = 0; _i < arguments.length; _i++) {
+	                args[_i - 0] = arguments[_i];
+	            }
+	            var result = tryCatch_1.tryCatch(selector).apply(void 0, args);
+	            if (result === errorObject_1.errorObject) {
+	                subscriber.error(errorObject_1.errorObject.e);
+	            }
+	            else {
+	                subscriber.next(result);
+	            }
+	        } : function (e) { return subscriber.next(e); };
+	        FromEventObservable.setupSubscription(sourceObj, eventName, handler, subscriber);
+	    };
+	    return FromEventObservable;
+	}(Observable_1.Observable));
+	exports.FromEventObservable = FromEventObservable;
+	//# sourceMappingURL=FromEventObservable.js.map
+
+/***/ },
+
+/***/ 361:
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var root_1 = __webpack_require__(362);
+	var toSubscriber_1 = __webpack_require__(363);
+	var symbol_observable_1 = __webpack_require__(374);
+	/**
+	 * A representation of any set of values over any amount of time. This the most basic building block
+	 * of RxJS.
+	 *
+	 * @class Observable<T>
+	 */
+	var Observable = (function () {
+	    /**
+	     * @constructor
+	     * @param {Function} subscribe the function that is  called when the Observable is
+	     * initially subscribed to. This function is given a Subscriber, to which new values
+	     * can be `next`ed, or an `error` method can be called to raise an error, or
+	     * `complete` can be called to notify of a successful completion.
+	     */
+	    function Observable(subscribe) {
+	        this._isScalar = false;
+	        if (subscribe) {
+	            this._subscribe = subscribe;
+	        }
+	    }
+	    /**
+	     * Creates a new Observable, with this Observable as the source, and the passed
+	     * operator defined as the new observable's operator.
+	     * @method lift
+	     * @param {Operator} operator the operator defining the operation to take on the observable
+	     * @return {Observable} a new observable with the Operator applied
+	     */
+	    Observable.prototype.lift = function (operator) {
+	        var observable = new Observable();
+	        observable.source = this;
+	        observable.operator = operator;
+	        return observable;
+	    };
+	    /**
+	     * Registers handlers for handling emitted values, error and completions from the observable, and
+	     *  executes the observable's subscriber function, which will take action to set up the underlying data stream
+	     * @method subscribe
+	     * @param {PartialObserver|Function} observerOrNext (optional) either an observer defining all functions to be called,
+	     *  or the first of three possible handlers, which is the handler for each value emitted from the observable.
+	     * @param {Function} error (optional) a handler for a terminal event resulting from an error. If no error handler is provided,
+	     *  the error will be thrown as unhandled
+	     * @param {Function} complete (optional) a handler for a terminal event resulting from successful completion.
+	     * @return {ISubscription} a subscription reference to the registered handlers
+	     */
+	    Observable.prototype.subscribe = function (observerOrNext, error, complete) {
+	        var operator = this.operator;
+	        var sink = toSubscriber_1.toSubscriber(observerOrNext, error, complete);
+	        if (operator) {
+	            operator.call(sink, this);
+	        }
+	        else {
+	            sink.add(this._subscribe(sink));
+	        }
+	        if (sink.syncErrorThrowable) {
+	            sink.syncErrorThrowable = false;
+	            if (sink.syncErrorThrown) {
+	                throw sink.syncErrorValue;
+	            }
+	        }
+	        return sink;
+	    };
+	    /**
+	     * @method forEach
+	     * @param {Function} next a handler for each value emitted by the observable
+	     * @param {PromiseConstructor} [PromiseCtor] a constructor function used to instantiate the Promise
+	     * @return {Promise} a promise that either resolves on observable completion or
+	     *  rejects with the handled error
+	     */
+	    Observable.prototype.forEach = function (next, PromiseCtor) {
+	        var _this = this;
+	        if (!PromiseCtor) {
+	            if (root_1.root.Rx && root_1.root.Rx.config && root_1.root.Rx.config.Promise) {
+	                PromiseCtor = root_1.root.Rx.config.Promise;
+	            }
+	            else if (root_1.root.Promise) {
+	                PromiseCtor = root_1.root.Promise;
+	            }
+	        }
+	        if (!PromiseCtor) {
+	            throw new Error('no Promise impl found');
+	        }
+	        return new PromiseCtor(function (resolve, reject) {
+	            var subscription = _this.subscribe(function (value) {
+	                if (subscription) {
+	                    // if there is a subscription, then we can surmise
+	                    // the next handling is asynchronous. Any errors thrown
+	                    // need to be rejected explicitly and unsubscribe must be
+	                    // called manually
+	                    try {
+	                        next(value);
+	                    }
+	                    catch (err) {
+	                        reject(err);
+	                        subscription.unsubscribe();
+	                    }
+	                }
+	                else {
+	                    // if there is NO subscription, then we're getting a nexted
+	                    // value synchronously during subscription. We can just call it.
+	                    // If it errors, Observable's `subscribe` imple will ensure the
+	                    // unsubscription logic is called, then synchronously rethrow the error.
+	                    // After that, Promise will trap the error and send it
+	                    // down the rejection path.
+	                    next(value);
+	                }
+	            }, reject, resolve);
+	        });
+	    };
+	    Observable.prototype._subscribe = function (subscriber) {
+	        return this.source.subscribe(subscriber);
+	    };
+	    /**
+	     * An interop point defined by the es7-observable spec https://github.com/zenparsing/es-observable
+	     * @method Symbol.observable
+	     * @return {Observable} this instance of the observable
+	     */
+	    Observable.prototype[symbol_observable_1.default] = function () {
+	        return this;
+	    };
+	    // HACK: Since TypeScript inherits static properties too, we have to
+	    // fight against TypeScript here so Subject can have a different static create signature
+	    /**
+	     * Creates a new cold Observable by calling the Observable constructor
+	     * @static true
+	     * @owner Observable
+	     * @method create
+	     * @param {Function} subscribe? the subscriber function to be passed to the Observable constructor
+	     * @return {Observable} a new cold observable
+	     */
+	    Observable.create = function (subscribe) {
+	        return new Observable(subscribe);
+	    };
+	    return Observable;
+	}());
+	exports.Observable = Observable;
+	//# sourceMappingURL=Observable.js.map
+
+/***/ },
+
+/***/ 362:
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(module, global) {"use strict";
+	var objectTypes = {
+	    'boolean': false,
+	    'function': true,
+	    'object': true,
+	    'number': false,
+	    'string': false,
+	    'undefined': false
+	};
+	exports.root = (objectTypes[typeof self] && self) || (objectTypes[typeof window] && window);
+	/* tslint:disable:no-unused-variable */
+	var freeExports = objectTypes[typeof exports] && exports && !exports.nodeType && exports;
+	var freeModule = objectTypes[typeof module] && module && !module.nodeType && module;
+	var freeGlobal = objectTypes[typeof global] && global;
+	if (freeGlobal && (freeGlobal.global === freeGlobal || freeGlobal.window === freeGlobal)) {
+	    exports.root = freeGlobal;
+	}
+	//# sourceMappingURL=root.js.map
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(23)(module), (function() { return this; }())))
+
+/***/ },
+
+/***/ 363:
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var Subscriber_1 = __webpack_require__(364);
+	var rxSubscriber_1 = __webpack_require__(373);
+	function toSubscriber(nextOrObserver, error, complete) {
+	    if (nextOrObserver) {
+	        if (nextOrObserver instanceof Subscriber_1.Subscriber) {
+	            return nextOrObserver;
+	        }
+	        if (nextOrObserver[rxSubscriber_1.$$rxSubscriber]) {
+	            return nextOrObserver[rxSubscriber_1.$$rxSubscriber]();
+	        }
+	    }
+	    if (!nextOrObserver && !error && !complete) {
+	        return new Subscriber_1.Subscriber();
+	    }
+	    return new Subscriber_1.Subscriber(nextOrObserver, error, complete);
+	}
+	exports.toSubscriber = toSubscriber;
+	//# sourceMappingURL=toSubscriber.js.map
+
+/***/ },
+
+/***/ 364:
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	var isFunction_1 = __webpack_require__(365);
+	var Subscription_1 = __webpack_require__(366);
+	var Observer_1 = __webpack_require__(372);
+	var rxSubscriber_1 = __webpack_require__(373);
+	/**
+	 * Implements the {@link Observer} interface and extends the
+	 * {@link Subscription} class. While the {@link Observer} is the public API for
+	 * consuming the values of an {@link Observable}, all Observers get converted to
+	 * a Subscriber, in order to provide Subscription-like capabilities such as
+	 * `unsubscribe`. Subscriber is a common type in RxJS, and crucial for
+	 * implementing operators, but it is rarely used as a public API.
+	 *
+	 * @class Subscriber<T>
+	 */
+	var Subscriber = (function (_super) {
+	    __extends(Subscriber, _super);
+	    /**
+	     * @param {Observer|function(value: T): void} [destinationOrNext] A partially
+	     * defined Observer or a `next` callback function.
+	     * @param {function(e: ?any): void} [error] The `error` callback of an
+	     * Observer.
+	     * @param {function(): void} [complete] The `complete` callback of an
+	     * Observer.
+	     */
+	    function Subscriber(destinationOrNext, error, complete) {
+	        _super.call(this);
+	        this.syncErrorValue = null;
+	        this.syncErrorThrown = false;
+	        this.syncErrorThrowable = false;
+	        this.isStopped = false;
+	        switch (arguments.length) {
+	            case 0:
+	                this.destination = Observer_1.empty;
+	                break;
+	            case 1:
+	                if (!destinationOrNext) {
+	                    this.destination = Observer_1.empty;
+	                    break;
+	                }
+	                if (typeof destinationOrNext === 'object') {
+	                    if (destinationOrNext instanceof Subscriber) {
+	                        this.destination = destinationOrNext;
+	                        this.destination.add(this);
+	                    }
+	                    else {
+	                        this.syncErrorThrowable = true;
+	                        this.destination = new SafeSubscriber(this, destinationOrNext);
+	                    }
+	                    break;
+	                }
+	            default:
+	                this.syncErrorThrowable = true;
+	                this.destination = new SafeSubscriber(this, destinationOrNext, error, complete);
+	                break;
+	        }
+	    }
+	    Subscriber.prototype[rxSubscriber_1.$$rxSubscriber] = function () { return this; };
+	    /**
+	     * A static factory for a Subscriber, given a (potentially partial) definition
+	     * of an Observer.
+	     * @param {function(x: ?T): void} [next] The `next` callback of an Observer.
+	     * @param {function(e: ?any): void} [error] The `error` callback of an
+	     * Observer.
+	     * @param {function(): void} [complete] The `complete` callback of an
+	     * Observer.
+	     * @return {Subscriber<T>} A Subscriber wrapping the (partially defined)
+	     * Observer represented by the given arguments.
+	     */
+	    Subscriber.create = function (next, error, complete) {
+	        var subscriber = new Subscriber(next, error, complete);
+	        subscriber.syncErrorThrowable = false;
+	        return subscriber;
+	    };
+	    /**
+	     * The {@link Observer} callback to receive notifications of type `next` from
+	     * the Observable, with a value. The Observable may call this method 0 or more
+	     * times.
+	     * @param {T} [value] The `next` value.
+	     * @return {void}
+	     */
+	    Subscriber.prototype.next = function (value) {
+	        if (!this.isStopped) {
+	            this._next(value);
+	        }
+	    };
+	    /**
+	     * The {@link Observer} callback to receive notifications of type `error` from
+	     * the Observable, with an attached {@link Error}. Notifies the Observer that
+	     * the Observable has experienced an error condition.
+	     * @param {any} [err] The `error` exception.
+	     * @return {void}
+	     */
+	    Subscriber.prototype.error = function (err) {
+	        if (!this.isStopped) {
+	            this.isStopped = true;
+	            this._error(err);
+	        }
+	    };
+	    /**
+	     * The {@link Observer} callback to receive a valueless notification of type
+	     * `complete` from the Observable. Notifies the Observer that the Observable
+	     * has finished sending push-based notifications.
+	     * @return {void}
+	     */
+	    Subscriber.prototype.complete = function () {
+	        if (!this.isStopped) {
+	            this.isStopped = true;
+	            this._complete();
+	        }
+	    };
+	    Subscriber.prototype.unsubscribe = function () {
+	        if (this.isUnsubscribed) {
+	            return;
+	        }
+	        this.isStopped = true;
+	        _super.prototype.unsubscribe.call(this);
+	    };
+	    Subscriber.prototype._next = function (value) {
+	        this.destination.next(value);
+	    };
+	    Subscriber.prototype._error = function (err) {
+	        this.destination.error(err);
+	        this.unsubscribe();
+	    };
+	    Subscriber.prototype._complete = function () {
+	        this.destination.complete();
+	        this.unsubscribe();
+	    };
+	    return Subscriber;
+	}(Subscription_1.Subscription));
+	exports.Subscriber = Subscriber;
+	/**
+	 * We need this JSDoc comment for affecting ESDoc.
+	 * @ignore
+	 * @extends {Ignored}
+	 */
+	var SafeSubscriber = (function (_super) {
+	    __extends(SafeSubscriber, _super);
+	    function SafeSubscriber(_parent, observerOrNext, error, complete) {
+	        _super.call(this);
+	        this._parent = _parent;
+	        var next;
+	        var context = this;
+	        if (isFunction_1.isFunction(observerOrNext)) {
+	            next = observerOrNext;
+	        }
+	        else if (observerOrNext) {
+	            context = observerOrNext;
+	            next = observerOrNext.next;
+	            error = observerOrNext.error;
+	            complete = observerOrNext.complete;
+	            if (isFunction_1.isFunction(context.unsubscribe)) {
+	                this.add(context.unsubscribe.bind(context));
+	            }
+	            context.unsubscribe = this.unsubscribe.bind(this);
+	        }
+	        this._context = context;
+	        this._next = next;
+	        this._error = error;
+	        this._complete = complete;
+	    }
+	    SafeSubscriber.prototype.next = function (value) {
+	        if (!this.isStopped && this._next) {
+	            var _parent = this._parent;
+	            if (!_parent.syncErrorThrowable) {
+	                this.__tryOrUnsub(this._next, value);
+	            }
+	            else if (this.__tryOrSetError(_parent, this._next, value)) {
+	                this.unsubscribe();
+	            }
+	        }
+	    };
+	    SafeSubscriber.prototype.error = function (err) {
+	        if (!this.isStopped) {
+	            var _parent = this._parent;
+	            if (this._error) {
+	                if (!_parent.syncErrorThrowable) {
+	                    this.__tryOrUnsub(this._error, err);
+	                    this.unsubscribe();
+	                }
+	                else {
+	                    this.__tryOrSetError(_parent, this._error, err);
+	                    this.unsubscribe();
+	                }
+	            }
+	            else if (!_parent.syncErrorThrowable) {
+	                this.unsubscribe();
+	                throw err;
+	            }
+	            else {
+	                _parent.syncErrorValue = err;
+	                _parent.syncErrorThrown = true;
+	                this.unsubscribe();
+	            }
+	        }
+	    };
+	    SafeSubscriber.prototype.complete = function () {
+	        if (!this.isStopped) {
+	            var _parent = this._parent;
+	            if (this._complete) {
+	                if (!_parent.syncErrorThrowable) {
+	                    this.__tryOrUnsub(this._complete);
+	                    this.unsubscribe();
+	                }
+	                else {
+	                    this.__tryOrSetError(_parent, this._complete);
+	                    this.unsubscribe();
+	                }
+	            }
+	            else {
+	                this.unsubscribe();
+	            }
+	        }
+	    };
+	    SafeSubscriber.prototype.__tryOrUnsub = function (fn, value) {
+	        try {
+	            fn.call(this._context, value);
+	        }
+	        catch (err) {
+	            this.unsubscribe();
+	            throw err;
+	        }
+	    };
+	    SafeSubscriber.prototype.__tryOrSetError = function (parent, fn, value) {
+	        try {
+	            fn.call(this._context, value);
+	        }
+	        catch (err) {
+	            parent.syncErrorValue = err;
+	            parent.syncErrorThrown = true;
+	            return true;
+	        }
+	        return false;
+	    };
+	    SafeSubscriber.prototype._unsubscribe = function () {
+	        var _parent = this._parent;
+	        this._context = null;
+	        this._parent = null;
+	        _parent.unsubscribe();
+	    };
+	    return SafeSubscriber;
+	}(Subscriber));
+	//# sourceMappingURL=Subscriber.js.map
+
+/***/ },
+
+/***/ 365:
+/***/ function(module, exports) {
+
+	"use strict";
+	function isFunction(x) {
+	    return typeof x === 'function';
+	}
+	exports.isFunction = isFunction;
+	//# sourceMappingURL=isFunction.js.map
+
+/***/ },
+
+/***/ 366:
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var isArray_1 = __webpack_require__(367);
+	var isObject_1 = __webpack_require__(368);
+	var isFunction_1 = __webpack_require__(365);
+	var tryCatch_1 = __webpack_require__(369);
+	var errorObject_1 = __webpack_require__(370);
+	var UnsubscriptionError_1 = __webpack_require__(371);
+	/**
+	 * Represents a disposable resource, such as the execution of an Observable. A
+	 * Subscription has one important method, `unsubscribe`, that takes no argument
+	 * and just disposes the resource held by the subscription.
+	 *
+	 * Additionally, subscriptions may be grouped together through the `add()`
+	 * method, which will attach a child Subscription to the current Subscription.
+	 * When a Subscription is unsubscribed, all its children (and its grandchildren)
+	 * will be unsubscribed as well.
+	 *
+	 * @class Subscription
+	 */
+	var Subscription = (function () {
+	    /**
+	     * @param {function(): void} [unsubscribe] A function describing how to
+	     * perform the disposal of resources when the `unsubscribe` method is called.
+	     */
+	    function Subscription(unsubscribe) {
+	        /**
+	         * A flag to indicate whether this Subscription has already been unsubscribed.
+	         * @type {boolean}
+	         */
+	        this.isUnsubscribed = false;
+	        if (unsubscribe) {
+	            this._unsubscribe = unsubscribe;
+	        }
+	    }
+	    /**
+	     * Disposes the resources held by the subscription. May, for instance, cancel
+	     * an ongoing Observable execution or cancel any other type of work that
+	     * started when the Subscription was created.
+	     * @return {void}
+	     */
+	    Subscription.prototype.unsubscribe = function () {
+	        var hasErrors = false;
+	        var errors;
+	        if (this.isUnsubscribed) {
+	            return;
+	        }
+	        this.isUnsubscribed = true;
+	        var _a = this, _unsubscribe = _a._unsubscribe, _subscriptions = _a._subscriptions;
+	        this._subscriptions = null;
+	        if (isFunction_1.isFunction(_unsubscribe)) {
+	            var trial = tryCatch_1.tryCatch(_unsubscribe).call(this);
+	            if (trial === errorObject_1.errorObject) {
+	                hasErrors = true;
+	                (errors = errors || []).push(errorObject_1.errorObject.e);
+	            }
+	        }
+	        if (isArray_1.isArray(_subscriptions)) {
+	            var index = -1;
+	            var len = _subscriptions.length;
+	            while (++index < len) {
+	                var sub = _subscriptions[index];
+	                if (isObject_1.isObject(sub)) {
+	                    var trial = tryCatch_1.tryCatch(sub.unsubscribe).call(sub);
+	                    if (trial === errorObject_1.errorObject) {
+	                        hasErrors = true;
+	                        errors = errors || [];
+	                        var err = errorObject_1.errorObject.e;
+	                        if (err instanceof UnsubscriptionError_1.UnsubscriptionError) {
+	                            errors = errors.concat(err.errors);
+	                        }
+	                        else {
+	                            errors.push(err);
+	                        }
+	                    }
+	                }
+	            }
+	        }
+	        if (hasErrors) {
+	            throw new UnsubscriptionError_1.UnsubscriptionError(errors);
+	        }
+	    };
+	    /**
+	     * Adds a tear down to be called during the unsubscribe() of this
+	     * Subscription.
+	     *
+	     * If the tear down being added is a subscription that is already
+	     * unsubscribed, is the same reference `add` is being called on, or is
+	     * `Subscription.EMPTY`, it will not be added.
+	     *
+	     * If this subscription is already in an `isUnsubscribed` state, the passed
+	     * tear down logic will be executed immediately.
+	     *
+	     * @param {TeardownLogic} teardown The additional logic to execute on
+	     * teardown.
+	     * @return {Subscription} Returns the Subscription used or created to be
+	     * added to the inner subscriptions list. This Subscription can be used with
+	     * `remove()` to remove the passed teardown logic from the inner subscriptions
+	     * list.
+	     */
+	    Subscription.prototype.add = function (teardown) {
+	        if (!teardown || (teardown === this) || (teardown === Subscription.EMPTY)) {
+	            return;
+	        }
+	        var sub = teardown;
+	        switch (typeof teardown) {
+	            case 'function':
+	                sub = new Subscription(teardown);
+	            case 'object':
+	                if (sub.isUnsubscribed || typeof sub.unsubscribe !== 'function') {
+	                    break;
+	                }
+	                else if (this.isUnsubscribed) {
+	                    sub.unsubscribe();
+	                }
+	                else {
+	                    (this._subscriptions || (this._subscriptions = [])).push(sub);
+	                }
+	                break;
+	            default:
+	                throw new Error('Unrecognized teardown ' + teardown + ' added to Subscription.');
+	        }
+	        return sub;
+	    };
+	    /**
+	     * Removes a Subscription from the internal list of subscriptions that will
+	     * unsubscribe during the unsubscribe process of this Subscription.
+	     * @param {Subscription} subscription The subscription to remove.
+	     * @return {void}
+	     */
+	    Subscription.prototype.remove = function (subscription) {
+	        // HACK: This might be redundant because of the logic in `add()`
+	        if (subscription == null || (subscription === this) || (subscription === Subscription.EMPTY)) {
+	            return;
+	        }
+	        var subscriptions = this._subscriptions;
+	        if (subscriptions) {
+	            var subscriptionIndex = subscriptions.indexOf(subscription);
+	            if (subscriptionIndex !== -1) {
+	                subscriptions.splice(subscriptionIndex, 1);
+	            }
+	        }
+	    };
+	    Subscription.EMPTY = (function (empty) {
+	        empty.isUnsubscribed = true;
+	        return empty;
+	    }(new Subscription()));
+	    return Subscription;
+	}());
+	exports.Subscription = Subscription;
+	//# sourceMappingURL=Subscription.js.map
+
+/***/ },
+
+/***/ 367:
+/***/ function(module, exports) {
+
+	"use strict";
+	exports.isArray = Array.isArray || (function (x) { return x && typeof x.length === 'number'; });
+	//# sourceMappingURL=isArray.js.map
+
+/***/ },
+
+/***/ 368:
+/***/ function(module, exports) {
+
+	"use strict";
+	function isObject(x) {
+	    return x != null && typeof x === 'object';
+	}
+	exports.isObject = isObject;
+	//# sourceMappingURL=isObject.js.map
+
+/***/ },
+
+/***/ 369:
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var errorObject_1 = __webpack_require__(370);
+	var tryCatchTarget;
+	function tryCatcher() {
+	    try {
+	        return tryCatchTarget.apply(this, arguments);
+	    }
+	    catch (e) {
+	        errorObject_1.errorObject.e = e;
+	        return errorObject_1.errorObject;
+	    }
+	}
+	function tryCatch(fn) {
+	    tryCatchTarget = fn;
+	    return tryCatcher;
+	}
+	exports.tryCatch = tryCatch;
+	;
+	//# sourceMappingURL=tryCatch.js.map
+
+/***/ },
+
+/***/ 370:
+/***/ function(module, exports) {
+
+	"use strict";
+	// typeof any so that it we don't have to cast when comparing a result to the error object
+	exports.errorObject = { e: {} };
+	//# sourceMappingURL=errorObject.js.map
+
+/***/ },
+
+/***/ 371:
+/***/ function(module, exports) {
+
+	"use strict";
+	var __extends = (this && this.__extends) || function (d, b) {
+	    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+	    function __() { this.constructor = d; }
+	    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+	};
+	/**
+	 * An error thrown when one or more errors have occurred during the
+	 * `unsubscribe` of a {@link Subscription}.
+	 */
+	var UnsubscriptionError = (function (_super) {
+	    __extends(UnsubscriptionError, _super);
+	    function UnsubscriptionError(errors) {
+	        _super.call(this);
+	        this.errors = errors;
+	        var err = Error.call(this, errors ?
+	            errors.length + " errors occurred during unsubscription:\n  " + errors.map(function (err, i) { return ((i + 1) + ") " + err.toString()); }).join('\n  ') : '');
+	        this.name = err.name = 'UnsubscriptionError';
+	        this.stack = err.stack;
+	        this.message = err.message;
+	    }
+	    return UnsubscriptionError;
+	}(Error));
+	exports.UnsubscriptionError = UnsubscriptionError;
+	//# sourceMappingURL=UnsubscriptionError.js.map
+
+/***/ },
+
+/***/ 372:
+/***/ function(module, exports) {
+
+	"use strict";
+	exports.empty = {
+	    isUnsubscribed: true,
+	    next: function (value) { },
+	    error: function (err) { throw err; },
+	    complete: function () { }
+	};
+	//# sourceMappingURL=Observer.js.map
+
+/***/ },
+
+/***/ 373:
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var root_1 = __webpack_require__(362);
+	var Symbol = root_1.root.Symbol;
+	exports.$$rxSubscriber = (typeof Symbol === 'function' && typeof Symbol.for === 'function') ?
+	    Symbol.for('rxSubscriber') : '@@rxSubscriber';
+	//# sourceMappingURL=rxSubscriber.js.map
+
+/***/ },
+
+/***/ 374:
+/***/ function(module, exports, __webpack_require__) {
+
+	module.exports = __webpack_require__(375);
+
+
+/***/ },
+
+/***/ 375:
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(global) {'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+		value: true
+	});
+
+	var _ponyfill = __webpack_require__(376);
+
+	var _ponyfill2 = _interopRequireDefault(_ponyfill);
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	var root = undefined; /* global window */
+
+	if (typeof global !== 'undefined') {
+		root = global;
+	} else if (typeof window !== 'undefined') {
+		root = window;
+	}
+
+	var result = (0, _ponyfill2.default)(root);
+	exports.default = result;
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
+
+/***/ },
+
+/***/ 376:
+/***/ function(module, exports) {
+
+	'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+		value: true
+	});
+	exports.default = symbolObservablePonyfill;
+	function symbolObservablePonyfill(root) {
+		var result;
+		var _Symbol = root.Symbol;
+
+		if (typeof _Symbol === 'function') {
+			if (_Symbol.observable) {
+				result = _Symbol.observable;
+			} else {
+				result = _Symbol('observable');
+				_Symbol.observable = result;
+			}
+		} else {
+			result = '@@observable';
+		}
+
+		return result;
+	};
+
+/***/ },
+
+/***/ 377:
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	var FromEventObservable_1 = __webpack_require__(360);
+	exports.fromEvent = FromEventObservable_1.FromEventObservable.create;
+	//# sourceMappingURL=fromEvent.js.map
+
+/***/ },
+
+/***/ 378:
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_RESULT__;// TinyColor v1.4.1
+	// https://github.com/bgrins/TinyColor
+	// Brian Grinstead, MIT License
+
+	(function(Math) {
+
+	var trimLeft = /^\s+/,
+	    trimRight = /\s+$/,
+	    tinyCounter = 0,
+	    mathRound = Math.round,
+	    mathMin = Math.min,
+	    mathMax = Math.max,
+	    mathRandom = Math.random;
+
+	function tinycolor (color, opts) {
+
+	    color = (color) ? color : '';
+	    opts = opts || { };
+
+	    // If input is already a tinycolor, return itself
+	    if (color instanceof tinycolor) {
+	       return color;
+	    }
+	    // If we are called as a function, call using new instead
+	    if (!(this instanceof tinycolor)) {
+	        return new tinycolor(color, opts);
+	    }
+
+	    var rgb = inputToRGB(color);
+	    this._originalInput = color,
+	    this._r = rgb.r,
+	    this._g = rgb.g,
+	    this._b = rgb.b,
+	    this._a = rgb.a,
+	    this._roundA = mathRound(100*this._a) / 100,
+	    this._format = opts.format || rgb.format;
+	    this._gradientType = opts.gradientType;
+
+	    // Don't let the range of [0,255] come back in [0,1].
+	    // Potentially lose a little bit of precision here, but will fix issues where
+	    // .5 gets interpreted as half of the total, instead of half of 1
+	    // If it was supposed to be 128, this was already taken care of by `inputToRgb`
+	    if (this._r < 1) { this._r = mathRound(this._r); }
+	    if (this._g < 1) { this._g = mathRound(this._g); }
+	    if (this._b < 1) { this._b = mathRound(this._b); }
+
+	    this._ok = rgb.ok;
+	    this._tc_id = tinyCounter++;
+	}
+
+	tinycolor.prototype = {
+	    isDark: function() {
+	        return this.getBrightness() < 128;
+	    },
+	    isLight: function() {
+	        return !this.isDark();
+	    },
+	    isValid: function() {
+	        return this._ok;
+	    },
+	    getOriginalInput: function() {
+	      return this._originalInput;
+	    },
+	    getFormat: function() {
+	        return this._format;
+	    },
+	    getAlpha: function() {
+	        return this._a;
+	    },
+	    getBrightness: function() {
+	        //http://www.w3.org/TR/AERT#color-contrast
+	        var rgb = this.toRgb();
+	        return (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+	    },
+	    getLuminance: function() {
+	        //http://www.w3.org/TR/2008/REC-WCAG20-20081211/#relativeluminancedef
+	        var rgb = this.toRgb();
+	        var RsRGB, GsRGB, BsRGB, R, G, B;
+	        RsRGB = rgb.r/255;
+	        GsRGB = rgb.g/255;
+	        BsRGB = rgb.b/255;
+
+	        if (RsRGB <= 0.03928) {R = RsRGB / 12.92;} else {R = Math.pow(((RsRGB + 0.055) / 1.055), 2.4);}
+	        if (GsRGB <= 0.03928) {G = GsRGB / 12.92;} else {G = Math.pow(((GsRGB + 0.055) / 1.055), 2.4);}
+	        if (BsRGB <= 0.03928) {B = BsRGB / 12.92;} else {B = Math.pow(((BsRGB + 0.055) / 1.055), 2.4);}
+	        return (0.2126 * R) + (0.7152 * G) + (0.0722 * B);
+	    },
+	    setAlpha: function(value) {
+	        this._a = boundAlpha(value);
+	        this._roundA = mathRound(100*this._a) / 100;
+	        return this;
+	    },
+	    toHsv: function() {
+	        var hsv = rgbToHsv(this._r, this._g, this._b);
+	        return { h: hsv.h * 360, s: hsv.s, v: hsv.v, a: this._a };
+	    },
+	    toHsvString: function() {
+	        var hsv = rgbToHsv(this._r, this._g, this._b);
+	        var h = mathRound(hsv.h * 360), s = mathRound(hsv.s * 100), v = mathRound(hsv.v * 100);
+	        return (this._a == 1) ?
+	          "hsv("  + h + ", " + s + "%, " + v + "%)" :
+	          "hsva(" + h + ", " + s + "%, " + v + "%, "+ this._roundA + ")";
+	    },
+	    toHsl: function() {
+	        var hsl = rgbToHsl(this._r, this._g, this._b);
+	        return { h: hsl.h * 360, s: hsl.s, l: hsl.l, a: this._a };
+	    },
+	    toHslString: function() {
+	        var hsl = rgbToHsl(this._r, this._g, this._b);
+	        var h = mathRound(hsl.h * 360), s = mathRound(hsl.s * 100), l = mathRound(hsl.l * 100);
+	        return (this._a == 1) ?
+	          "hsl("  + h + ", " + s + "%, " + l + "%)" :
+	          "hsla(" + h + ", " + s + "%, " + l + "%, "+ this._roundA + ")";
+	    },
+	    toHex: function(allow3Char) {
+	        return rgbToHex(this._r, this._g, this._b, allow3Char);
+	    },
+	    toHexString: function(allow3Char) {
+	        return '#' + this.toHex(allow3Char);
+	    },
+	    toHex8: function(allow4Char) {
+	        return rgbaToHex(this._r, this._g, this._b, this._a, allow4Char);
+	    },
+	    toHex8String: function(allow4Char) {
+	        return '#' + this.toHex8(allow4Char);
+	    },
+	    toRgb: function() {
+	        return { r: mathRound(this._r), g: mathRound(this._g), b: mathRound(this._b), a: this._a };
+	    },
+	    toRgbString: function() {
+	        return (this._a == 1) ?
+	          "rgb("  + mathRound(this._r) + ", " + mathRound(this._g) + ", " + mathRound(this._b) + ")" :
+	          "rgba(" + mathRound(this._r) + ", " + mathRound(this._g) + ", " + mathRound(this._b) + ", " + this._roundA + ")";
+	    },
+	    toPercentageRgb: function() {
+	        return { r: mathRound(bound01(this._r, 255) * 100) + "%", g: mathRound(bound01(this._g, 255) * 100) + "%", b: mathRound(bound01(this._b, 255) * 100) + "%", a: this._a };
+	    },
+	    toPercentageRgbString: function() {
+	        return (this._a == 1) ?
+	          "rgb("  + mathRound(bound01(this._r, 255) * 100) + "%, " + mathRound(bound01(this._g, 255) * 100) + "%, " + mathRound(bound01(this._b, 255) * 100) + "%)" :
+	          "rgba(" + mathRound(bound01(this._r, 255) * 100) + "%, " + mathRound(bound01(this._g, 255) * 100) + "%, " + mathRound(bound01(this._b, 255) * 100) + "%, " + this._roundA + ")";
+	    },
+	    toName: function() {
+	        if (this._a === 0) {
+	            return "transparent";
+	        }
+
+	        if (this._a < 1) {
+	            return false;
+	        }
+
+	        return hexNames[rgbToHex(this._r, this._g, this._b, true)] || false;
+	    },
+	    toFilter: function(secondColor) {
+	        var hex8String = '#' + rgbaToArgbHex(this._r, this._g, this._b, this._a);
+	        var secondHex8String = hex8String;
+	        var gradientType = this._gradientType ? "GradientType = 1, " : "";
+
+	        if (secondColor) {
+	            var s = tinycolor(secondColor);
+	            secondHex8String = '#' + rgbaToArgbHex(s._r, s._g, s._b, s._a);
+	        }
+
+	        return "progid:DXImageTransform.Microsoft.gradient("+gradientType+"startColorstr="+hex8String+",endColorstr="+secondHex8String+")";
+	    },
+	    toString: function(format) {
+	        var formatSet = !!format;
+	        format = format || this._format;
+
+	        var formattedString = false;
+	        var hasAlpha = this._a < 1 && this._a >= 0;
+	        var needsAlphaFormat = !formatSet && hasAlpha && (format === "hex" || format === "hex6" || format === "hex3" || format === "hex4" || format === "hex8" || format === "name");
+
+	        if (needsAlphaFormat) {
+	            // Special case for "transparent", all other non-alpha formats
+	            // will return rgba when there is transparency.
+	            if (format === "name" && this._a === 0) {
+	                return this.toName();
+	            }
+	            return this.toRgbString();
+	        }
+	        if (format === "rgb") {
+	            formattedString = this.toRgbString();
+	        }
+	        if (format === "prgb") {
+	            formattedString = this.toPercentageRgbString();
+	        }
+	        if (format === "hex" || format === "hex6") {
+	            formattedString = this.toHexString();
+	        }
+	        if (format === "hex3") {
+	            formattedString = this.toHexString(true);
+	        }
+	        if (format === "hex4") {
+	            formattedString = this.toHex8String(true);
+	        }
+	        if (format === "hex8") {
+	            formattedString = this.toHex8String();
+	        }
+	        if (format === "name") {
+	            formattedString = this.toName();
+	        }
+	        if (format === "hsl") {
+	            formattedString = this.toHslString();
+	        }
+	        if (format === "hsv") {
+	            formattedString = this.toHsvString();
+	        }
+
+	        return formattedString || this.toHexString();
+	    },
+	    clone: function() {
+	        return tinycolor(this.toString());
+	    },
+
+	    _applyModification: function(fn, args) {
+	        var color = fn.apply(null, [this].concat([].slice.call(args)));
+	        this._r = color._r;
+	        this._g = color._g;
+	        this._b = color._b;
+	        this.setAlpha(color._a);
+	        return this;
+	    },
+	    lighten: function() {
+	        return this._applyModification(lighten, arguments);
+	    },
+	    brighten: function() {
+	        return this._applyModification(brighten, arguments);
+	    },
+	    darken: function() {
+	        return this._applyModification(darken, arguments);
+	    },
+	    desaturate: function() {
+	        return this._applyModification(desaturate, arguments);
+	    },
+	    saturate: function() {
+	        return this._applyModification(saturate, arguments);
+	    },
+	    greyscale: function() {
+	        return this._applyModification(greyscale, arguments);
+	    },
+	    spin: function() {
+	        return this._applyModification(spin, arguments);
+	    },
+
+	    _applyCombination: function(fn, args) {
+	        return fn.apply(null, [this].concat([].slice.call(args)));
+	    },
+	    analogous: function() {
+	        return this._applyCombination(analogous, arguments);
+	    },
+	    complement: function() {
+	        return this._applyCombination(complement, arguments);
+	    },
+	    monochromatic: function() {
+	        return this._applyCombination(monochromatic, arguments);
+	    },
+	    splitcomplement: function() {
+	        return this._applyCombination(splitcomplement, arguments);
+	    },
+	    triad: function() {
+	        return this._applyCombination(triad, arguments);
+	    },
+	    tetrad: function() {
+	        return this._applyCombination(tetrad, arguments);
+	    }
+	};
+
+	// If input is an object, force 1 into "1.0" to handle ratios properly
+	// String input requires "1.0" as input, so 1 will be treated as 1
+	tinycolor.fromRatio = function(color, opts) {
+	    if (typeof color == "object") {
+	        var newColor = {};
+	        for (var i in color) {
+	            if (color.hasOwnProperty(i)) {
+	                if (i === "a") {
+	                    newColor[i] = color[i];
+	                }
+	                else {
+	                    newColor[i] = convertToPercentage(color[i]);
+	                }
+	            }
+	        }
+	        color = newColor;
+	    }
+
+	    return tinycolor(color, opts);
+	};
+
+	// Given a string or object, convert that input to RGB
+	// Possible string inputs:
+	//
+	//     "red"
+	//     "#f00" or "f00"
+	//     "#ff0000" or "ff0000"
+	//     "#ff000000" or "ff000000"
+	//     "rgb 255 0 0" or "rgb (255, 0, 0)"
+	//     "rgb 1.0 0 0" or "rgb (1, 0, 0)"
+	//     "rgba (255, 0, 0, 1)" or "rgba 255, 0, 0, 1"
+	//     "rgba (1.0, 0, 0, 1)" or "rgba 1.0, 0, 0, 1"
+	//     "hsl(0, 100%, 50%)" or "hsl 0 100% 50%"
+	//     "hsla(0, 100%, 50%, 1)" or "hsla 0 100% 50%, 1"
+	//     "hsv(0, 100%, 100%)" or "hsv 0 100% 100%"
+	//
+	function inputToRGB(color) {
+
+	    var rgb = { r: 0, g: 0, b: 0 };
+	    var a = 1;
+	    var s = null;
+	    var v = null;
+	    var l = null;
+	    var ok = false;
+	    var format = false;
+
+	    if (typeof color == "string") {
+	        color = stringInputToObject(color);
+	    }
+
+	    if (typeof color == "object") {
+	        if (isValidCSSUnit(color.r) && isValidCSSUnit(color.g) && isValidCSSUnit(color.b)) {
+	            rgb = rgbToRgb(color.r, color.g, color.b);
+	            ok = true;
+	            format = String(color.r).substr(-1) === "%" ? "prgb" : "rgb";
+	        }
+	        else if (isValidCSSUnit(color.h) && isValidCSSUnit(color.s) && isValidCSSUnit(color.v)) {
+	            s = convertToPercentage(color.s);
+	            v = convertToPercentage(color.v);
+	            rgb = hsvToRgb(color.h, s, v);
+	            ok = true;
+	            format = "hsv";
+	        }
+	        else if (isValidCSSUnit(color.h) && isValidCSSUnit(color.s) && isValidCSSUnit(color.l)) {
+	            s = convertToPercentage(color.s);
+	            l = convertToPercentage(color.l);
+	            rgb = hslToRgb(color.h, s, l);
+	            ok = true;
+	            format = "hsl";
+	        }
+
+	        if (color.hasOwnProperty("a")) {
+	            a = color.a;
+	        }
+	    }
+
+	    a = boundAlpha(a);
+
+	    return {
+	        ok: ok,
+	        format: color.format || format,
+	        r: mathMin(255, mathMax(rgb.r, 0)),
+	        g: mathMin(255, mathMax(rgb.g, 0)),
+	        b: mathMin(255, mathMax(rgb.b, 0)),
+	        a: a
+	    };
+	}
+
+
+	// Conversion Functions
+	// --------------------
+
+	// `rgbToHsl`, `rgbToHsv`, `hslToRgb`, `hsvToRgb` modified from:
+	// <http://mjijackson.com/2008/02/rgb-to-hsl-and-rgb-to-hsv-color-model-conversion-algorithms-in-javascript>
+
+	// `rgbToRgb`
+	// Handle bounds / percentage checking to conform to CSS color spec
+	// <http://www.w3.org/TR/css3-color/>
+	// *Assumes:* r, g, b in [0, 255] or [0, 1]
+	// *Returns:* { r, g, b } in [0, 255]
+	function rgbToRgb(r, g, b){
+	    return {
+	        r: bound01(r, 255) * 255,
+	        g: bound01(g, 255) * 255,
+	        b: bound01(b, 255) * 255
+	    };
+	}
+
+	// `rgbToHsl`
+	// Converts an RGB color value to HSL.
+	// *Assumes:* r, g, and b are contained in [0, 255] or [0, 1]
+	// *Returns:* { h, s, l } in [0,1]
+	function rgbToHsl(r, g, b) {
+
+	    r = bound01(r, 255);
+	    g = bound01(g, 255);
+	    b = bound01(b, 255);
+
+	    var max = mathMax(r, g, b), min = mathMin(r, g, b);
+	    var h, s, l = (max + min) / 2;
+
+	    if(max == min) {
+	        h = s = 0; // achromatic
+	    }
+	    else {
+	        var d = max - min;
+	        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+	        switch(max) {
+	            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+	            case g: h = (b - r) / d + 2; break;
+	            case b: h = (r - g) / d + 4; break;
+	        }
+
+	        h /= 6;
+	    }
+
+	    return { h: h, s: s, l: l };
+	}
+
+	// `hslToRgb`
+	// Converts an HSL color value to RGB.
+	// *Assumes:* h is contained in [0, 1] or [0, 360] and s and l are contained [0, 1] or [0, 100]
+	// *Returns:* { r, g, b } in the set [0, 255]
+	function hslToRgb(h, s, l) {
+	    var r, g, b;
+
+	    h = bound01(h, 360);
+	    s = bound01(s, 100);
+	    l = bound01(l, 100);
+
+	    function hue2rgb(p, q, t) {
+	        if(t < 0) t += 1;
+	        if(t > 1) t -= 1;
+	        if(t < 1/6) return p + (q - p) * 6 * t;
+	        if(t < 1/2) return q;
+	        if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+	        return p;
+	    }
+
+	    if(s === 0) {
+	        r = g = b = l; // achromatic
+	    }
+	    else {
+	        var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+	        var p = 2 * l - q;
+	        r = hue2rgb(p, q, h + 1/3);
+	        g = hue2rgb(p, q, h);
+	        b = hue2rgb(p, q, h - 1/3);
+	    }
+
+	    return { r: r * 255, g: g * 255, b: b * 255 };
+	}
+
+	// `rgbToHsv`
+	// Converts an RGB color value to HSV
+	// *Assumes:* r, g, and b are contained in the set [0, 255] or [0, 1]
+	// *Returns:* { h, s, v } in [0,1]
+	function rgbToHsv(r, g, b) {
+
+	    r = bound01(r, 255);
+	    g = bound01(g, 255);
+	    b = bound01(b, 255);
+
+	    var max = mathMax(r, g, b), min = mathMin(r, g, b);
+	    var h, s, v = max;
+
+	    var d = max - min;
+	    s = max === 0 ? 0 : d / max;
+
+	    if(max == min) {
+	        h = 0; // achromatic
+	    }
+	    else {
+	        switch(max) {
+	            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+	            case g: h = (b - r) / d + 2; break;
+	            case b: h = (r - g) / d + 4; break;
+	        }
+	        h /= 6;
+	    }
+	    return { h: h, s: s, v: v };
+	}
+
+	// `hsvToRgb`
+	// Converts an HSV color value to RGB.
+	// *Assumes:* h is contained in [0, 1] or [0, 360] and s and v are contained in [0, 1] or [0, 100]
+	// *Returns:* { r, g, b } in the set [0, 255]
+	 function hsvToRgb(h, s, v) {
+
+	    h = bound01(h, 360) * 6;
+	    s = bound01(s, 100);
+	    v = bound01(v, 100);
+
+	    var i = Math.floor(h),
+	        f = h - i,
+	        p = v * (1 - s),
+	        q = v * (1 - f * s),
+	        t = v * (1 - (1 - f) * s),
+	        mod = i % 6,
+	        r = [v, q, p, p, t, v][mod],
+	        g = [t, v, v, q, p, p][mod],
+	        b = [p, p, t, v, v, q][mod];
+
+	    return { r: r * 255, g: g * 255, b: b * 255 };
+	}
+
+	// `rgbToHex`
+	// Converts an RGB color to hex
+	// Assumes r, g, and b are contained in the set [0, 255]
+	// Returns a 3 or 6 character hex
+	function rgbToHex(r, g, b, allow3Char) {
+
+	    var hex = [
+	        pad2(mathRound(r).toString(16)),
+	        pad2(mathRound(g).toString(16)),
+	        pad2(mathRound(b).toString(16))
+	    ];
+
+	    // Return a 3 character hex if possible
+	    if (allow3Char && hex[0].charAt(0) == hex[0].charAt(1) && hex[1].charAt(0) == hex[1].charAt(1) && hex[2].charAt(0) == hex[2].charAt(1)) {
+	        return hex[0].charAt(0) + hex[1].charAt(0) + hex[2].charAt(0);
+	    }
+
+	    return hex.join("");
+	}
+
+	// `rgbaToHex`
+	// Converts an RGBA color plus alpha transparency to hex
+	// Assumes r, g, b are contained in the set [0, 255] and
+	// a in [0, 1]. Returns a 4 or 8 character rgba hex
+	function rgbaToHex(r, g, b, a, allow4Char) {
+
+	    var hex = [
+	        pad2(mathRound(r).toString(16)),
+	        pad2(mathRound(g).toString(16)),
+	        pad2(mathRound(b).toString(16)),
+	        pad2(convertDecimalToHex(a))
+	    ];
+
+	    // Return a 4 character hex if possible
+	    if (allow4Char && hex[0].charAt(0) == hex[0].charAt(1) && hex[1].charAt(0) == hex[1].charAt(1) && hex[2].charAt(0) == hex[2].charAt(1) && hex[3].charAt(0) == hex[3].charAt(1)) {
+	        return hex[0].charAt(0) + hex[1].charAt(0) + hex[2].charAt(0) + hex[3].charAt(0);
+	    }
+
+	    return hex.join("");
+	}
+
+	// `rgbaToArgbHex`
+	// Converts an RGBA color to an ARGB Hex8 string
+	// Rarely used, but required for "toFilter()"
+	function rgbaToArgbHex(r, g, b, a) {
+
+	    var hex = [
+	        pad2(convertDecimalToHex(a)),
+	        pad2(mathRound(r).toString(16)),
+	        pad2(mathRound(g).toString(16)),
+	        pad2(mathRound(b).toString(16))
+	    ];
+
+	    return hex.join("");
+	}
+
+	// `equals`
+	// Can be called with any tinycolor input
+	tinycolor.equals = function (color1, color2) {
+	    if (!color1 || !color2) { return false; }
+	    return tinycolor(color1).toRgbString() == tinycolor(color2).toRgbString();
+	};
+
+	tinycolor.random = function() {
+	    return tinycolor.fromRatio({
+	        r: mathRandom(),
+	        g: mathRandom(),
+	        b: mathRandom()
+	    });
+	};
+
+
+	// Modification Functions
+	// ----------------------
+	// Thanks to less.js for some of the basics here
+	// <https://github.com/cloudhead/less.js/blob/master/lib/less/functions.js>
+
+	function desaturate(color, amount) {
+	    amount = (amount === 0) ? 0 : (amount || 10);
+	    var hsl = tinycolor(color).toHsl();
+	    hsl.s -= amount / 100;
+	    hsl.s = clamp01(hsl.s);
+	    return tinycolor(hsl);
+	}
+
+	function saturate(color, amount) {
+	    amount = (amount === 0) ? 0 : (amount || 10);
+	    var hsl = tinycolor(color).toHsl();
+	    hsl.s += amount / 100;
+	    hsl.s = clamp01(hsl.s);
+	    return tinycolor(hsl);
+	}
+
+	function greyscale(color) {
+	    return tinycolor(color).desaturate(100);
+	}
+
+	function lighten (color, amount) {
+	    amount = (amount === 0) ? 0 : (amount || 10);
+	    var hsl = tinycolor(color).toHsl();
+	    hsl.l += amount / 100;
+	    hsl.l = clamp01(hsl.l);
+	    return tinycolor(hsl);
+	}
+
+	function brighten(color, amount) {
+	    amount = (amount === 0) ? 0 : (amount || 10);
+	    var rgb = tinycolor(color).toRgb();
+	    rgb.r = mathMax(0, mathMin(255, rgb.r - mathRound(255 * - (amount / 100))));
+	    rgb.g = mathMax(0, mathMin(255, rgb.g - mathRound(255 * - (amount / 100))));
+	    rgb.b = mathMax(0, mathMin(255, rgb.b - mathRound(255 * - (amount / 100))));
+	    return tinycolor(rgb);
+	}
+
+	function darken (color, amount) {
+	    amount = (amount === 0) ? 0 : (amount || 10);
+	    var hsl = tinycolor(color).toHsl();
+	    hsl.l -= amount / 100;
+	    hsl.l = clamp01(hsl.l);
+	    return tinycolor(hsl);
+	}
+
+	// Spin takes a positive or negative amount within [-360, 360] indicating the change of hue.
+	// Values outside of this range will be wrapped into this range.
+	function spin(color, amount) {
+	    var hsl = tinycolor(color).toHsl();
+	    var hue = (hsl.h + amount) % 360;
+	    hsl.h = hue < 0 ? 360 + hue : hue;
+	    return tinycolor(hsl);
+	}
+
+	// Combination Functions
+	// ---------------------
+	// Thanks to jQuery xColor for some of the ideas behind these
+	// <https://github.com/infusion/jQuery-xcolor/blob/master/jquery.xcolor.js>
+
+	function complement(color) {
+	    var hsl = tinycolor(color).toHsl();
+	    hsl.h = (hsl.h + 180) % 360;
+	    return tinycolor(hsl);
+	}
+
+	function triad(color) {
+	    var hsl = tinycolor(color).toHsl();
+	    var h = hsl.h;
+	    return [
+	        tinycolor(color),
+	        tinycolor({ h: (h + 120) % 360, s: hsl.s, l: hsl.l }),
+	        tinycolor({ h: (h + 240) % 360, s: hsl.s, l: hsl.l })
+	    ];
+	}
+
+	function tetrad(color) {
+	    var hsl = tinycolor(color).toHsl();
+	    var h = hsl.h;
+	    return [
+	        tinycolor(color),
+	        tinycolor({ h: (h + 90) % 360, s: hsl.s, l: hsl.l }),
+	        tinycolor({ h: (h + 180) % 360, s: hsl.s, l: hsl.l }),
+	        tinycolor({ h: (h + 270) % 360, s: hsl.s, l: hsl.l })
+	    ];
+	}
+
+	function splitcomplement(color) {
+	    var hsl = tinycolor(color).toHsl();
+	    var h = hsl.h;
+	    return [
+	        tinycolor(color),
+	        tinycolor({ h: (h + 72) % 360, s: hsl.s, l: hsl.l}),
+	        tinycolor({ h: (h + 216) % 360, s: hsl.s, l: hsl.l})
+	    ];
+	}
+
+	function analogous(color, results, slices) {
+	    results = results || 6;
+	    slices = slices || 30;
+
+	    var hsl = tinycolor(color).toHsl();
+	    var part = 360 / slices;
+	    var ret = [tinycolor(color)];
+
+	    for (hsl.h = ((hsl.h - (part * results >> 1)) + 720) % 360; --results; ) {
+	        hsl.h = (hsl.h + part) % 360;
+	        ret.push(tinycolor(hsl));
+	    }
+	    return ret;
+	}
+
+	function monochromatic(color, results) {
+	    results = results || 6;
+	    var hsv = tinycolor(color).toHsv();
+	    var h = hsv.h, s = hsv.s, v = hsv.v;
+	    var ret = [];
+	    var modification = 1 / results;
+
+	    while (results--) {
+	        ret.push(tinycolor({ h: h, s: s, v: v}));
+	        v = (v + modification) % 1;
+	    }
+
+	    return ret;
+	}
+
+	// Utility Functions
+	// ---------------------
+
+	tinycolor.mix = function(color1, color2, amount) {
+	    amount = (amount === 0) ? 0 : (amount || 50);
+
+	    var rgb1 = tinycolor(color1).toRgb();
+	    var rgb2 = tinycolor(color2).toRgb();
+
+	    var p = amount / 100;
+
+	    var rgba = {
+	        r: ((rgb2.r - rgb1.r) * p) + rgb1.r,
+	        g: ((rgb2.g - rgb1.g) * p) + rgb1.g,
+	        b: ((rgb2.b - rgb1.b) * p) + rgb1.b,
+	        a: ((rgb2.a - rgb1.a) * p) + rgb1.a
+	    };
+
+	    return tinycolor(rgba);
+	};
+
+
+	// Readability Functions
+	// ---------------------
+	// <http://www.w3.org/TR/2008/REC-WCAG20-20081211/#contrast-ratiodef (WCAG Version 2)
+
+	// `contrast`
+	// Analyze the 2 colors and returns the color contrast defined by (WCAG Version 2)
+	tinycolor.readability = function(color1, color2) {
+	    var c1 = tinycolor(color1);
+	    var c2 = tinycolor(color2);
+	    return (Math.max(c1.getLuminance(),c2.getLuminance())+0.05) / (Math.min(c1.getLuminance(),c2.getLuminance())+0.05);
+	};
+
+	// `isReadable`
+	// Ensure that foreground and background color combinations meet WCAG2 guidelines.
+	// The third argument is an optional Object.
+	//      the 'level' property states 'AA' or 'AAA' - if missing or invalid, it defaults to 'AA';
+	//      the 'size' property states 'large' or 'small' - if missing or invalid, it defaults to 'small'.
+	// If the entire object is absent, isReadable defaults to {level:"AA",size:"small"}.
+
+	// *Example*
+	//    tinycolor.isReadable("#000", "#111") => false
+	//    tinycolor.isReadable("#000", "#111",{level:"AA",size:"large"}) => false
+	tinycolor.isReadable = function(color1, color2, wcag2) {
+	    var readability = tinycolor.readability(color1, color2);
+	    var wcag2Parms, out;
+
+	    out = false;
+
+	    wcag2Parms = validateWCAG2Parms(wcag2);
+	    switch (wcag2Parms.level + wcag2Parms.size) {
+	        case "AAsmall":
+	        case "AAAlarge":
+	            out = readability >= 4.5;
+	            break;
+	        case "AAlarge":
+	            out = readability >= 3;
+	            break;
+	        case "AAAsmall":
+	            out = readability >= 7;
+	            break;
+	    }
+	    return out;
+
+	};
+
+	// `mostReadable`
+	// Given a base color and a list of possible foreground or background
+	// colors for that base, returns the most readable color.
+	// Optionally returns Black or White if the most readable color is unreadable.
+	// *Example*
+	//    tinycolor.mostReadable(tinycolor.mostReadable("#123", ["#124", "#125"],{includeFallbackColors:false}).toHexString(); // "#112255"
+	//    tinycolor.mostReadable(tinycolor.mostReadable("#123", ["#124", "#125"],{includeFallbackColors:true}).toHexString();  // "#ffffff"
+	//    tinycolor.mostReadable("#a8015a", ["#faf3f3"],{includeFallbackColors:true,level:"AAA",size:"large"}).toHexString(); // "#faf3f3"
+	//    tinycolor.mostReadable("#a8015a", ["#faf3f3"],{includeFallbackColors:true,level:"AAA",size:"small"}).toHexString(); // "#ffffff"
+	tinycolor.mostReadable = function(baseColor, colorList, args) {
+	    var bestColor = null;
+	    var bestScore = 0;
+	    var readability;
+	    var includeFallbackColors, level, size ;
+	    args = args || {};
+	    includeFallbackColors = args.includeFallbackColors ;
+	    level = args.level;
+	    size = args.size;
+
+	    for (var i= 0; i < colorList.length ; i++) {
+	        readability = tinycolor.readability(baseColor, colorList[i]);
+	        if (readability > bestScore) {
+	            bestScore = readability;
+	            bestColor = tinycolor(colorList[i]);
+	        }
+	    }
+
+	    if (tinycolor.isReadable(baseColor, bestColor, {"level":level,"size":size}) || !includeFallbackColors) {
+	        return bestColor;
+	    }
+	    else {
+	        args.includeFallbackColors=false;
+	        return tinycolor.mostReadable(baseColor,["#fff", "#000"],args);
+	    }
+	};
+
+
+	// Big List of Colors
+	// ------------------
+	// <http://www.w3.org/TR/css3-color/#svg-color>
+	var names = tinycolor.names = {
+	    aliceblue: "f0f8ff",
+	    antiquewhite: "faebd7",
+	    aqua: "0ff",
+	    aquamarine: "7fffd4",
+	    azure: "f0ffff",
+	    beige: "f5f5dc",
+	    bisque: "ffe4c4",
+	    black: "000",
+	    blanchedalmond: "ffebcd",
+	    blue: "00f",
+	    blueviolet: "8a2be2",
+	    brown: "a52a2a",
+	    burlywood: "deb887",
+	    burntsienna: "ea7e5d",
+	    cadetblue: "5f9ea0",
+	    chartreuse: "7fff00",
+	    chocolate: "d2691e",
+	    coral: "ff7f50",
+	    cornflowerblue: "6495ed",
+	    cornsilk: "fff8dc",
+	    crimson: "dc143c",
+	    cyan: "0ff",
+	    darkblue: "00008b",
+	    darkcyan: "008b8b",
+	    darkgoldenrod: "b8860b",
+	    darkgray: "a9a9a9",
+	    darkgreen: "006400",
+	    darkgrey: "a9a9a9",
+	    darkkhaki: "bdb76b",
+	    darkmagenta: "8b008b",
+	    darkolivegreen: "556b2f",
+	    darkorange: "ff8c00",
+	    darkorchid: "9932cc",
+	    darkred: "8b0000",
+	    darksalmon: "e9967a",
+	    darkseagreen: "8fbc8f",
+	    darkslateblue: "483d8b",
+	    darkslategray: "2f4f4f",
+	    darkslategrey: "2f4f4f",
+	    darkturquoise: "00ced1",
+	    darkviolet: "9400d3",
+	    deeppink: "ff1493",
+	    deepskyblue: "00bfff",
+	    dimgray: "696969",
+	    dimgrey: "696969",
+	    dodgerblue: "1e90ff",
+	    firebrick: "b22222",
+	    floralwhite: "fffaf0",
+	    forestgreen: "228b22",
+	    fuchsia: "f0f",
+	    gainsboro: "dcdcdc",
+	    ghostwhite: "f8f8ff",
+	    gold: "ffd700",
+	    goldenrod: "daa520",
+	    gray: "808080",
+	    green: "008000",
+	    greenyellow: "adff2f",
+	    grey: "808080",
+	    honeydew: "f0fff0",
+	    hotpink: "ff69b4",
+	    indianred: "cd5c5c",
+	    indigo: "4b0082",
+	    ivory: "fffff0",
+	    khaki: "f0e68c",
+	    lavender: "e6e6fa",
+	    lavenderblush: "fff0f5",
+	    lawngreen: "7cfc00",
+	    lemonchiffon: "fffacd",
+	    lightblue: "add8e6",
+	    lightcoral: "f08080",
+	    lightcyan: "e0ffff",
+	    lightgoldenrodyellow: "fafad2",
+	    lightgray: "d3d3d3",
+	    lightgreen: "90ee90",
+	    lightgrey: "d3d3d3",
+	    lightpink: "ffb6c1",
+	    lightsalmon: "ffa07a",
+	    lightseagreen: "20b2aa",
+	    lightskyblue: "87cefa",
+	    lightslategray: "789",
+	    lightslategrey: "789",
+	    lightsteelblue: "b0c4de",
+	    lightyellow: "ffffe0",
+	    lime: "0f0",
+	    limegreen: "32cd32",
+	    linen: "faf0e6",
+	    magenta: "f0f",
+	    maroon: "800000",
+	    mediumaquamarine: "66cdaa",
+	    mediumblue: "0000cd",
+	    mediumorchid: "ba55d3",
+	    mediumpurple: "9370db",
+	    mediumseagreen: "3cb371",
+	    mediumslateblue: "7b68ee",
+	    mediumspringgreen: "00fa9a",
+	    mediumturquoise: "48d1cc",
+	    mediumvioletred: "c71585",
+	    midnightblue: "191970",
+	    mintcream: "f5fffa",
+	    mistyrose: "ffe4e1",
+	    moccasin: "ffe4b5",
+	    navajowhite: "ffdead",
+	    navy: "000080",
+	    oldlace: "fdf5e6",
+	    olive: "808000",
+	    olivedrab: "6b8e23",
+	    orange: "ffa500",
+	    orangered: "ff4500",
+	    orchid: "da70d6",
+	    palegoldenrod: "eee8aa",
+	    palegreen: "98fb98",
+	    paleturquoise: "afeeee",
+	    palevioletred: "db7093",
+	    papayawhip: "ffefd5",
+	    peachpuff: "ffdab9",
+	    peru: "cd853f",
+	    pink: "ffc0cb",
+	    plum: "dda0dd",
+	    powderblue: "b0e0e6",
+	    purple: "800080",
+	    rebeccapurple: "663399",
+	    red: "f00",
+	    rosybrown: "bc8f8f",
+	    royalblue: "4169e1",
+	    saddlebrown: "8b4513",
+	    salmon: "fa8072",
+	    sandybrown: "f4a460",
+	    seagreen: "2e8b57",
+	    seashell: "fff5ee",
+	    sienna: "a0522d",
+	    silver: "c0c0c0",
+	    skyblue: "87ceeb",
+	    slateblue: "6a5acd",
+	    slategray: "708090",
+	    slategrey: "708090",
+	    snow: "fffafa",
+	    springgreen: "00ff7f",
+	    steelblue: "4682b4",
+	    tan: "d2b48c",
+	    teal: "008080",
+	    thistle: "d8bfd8",
+	    tomato: "ff6347",
+	    turquoise: "40e0d0",
+	    violet: "ee82ee",
+	    wheat: "f5deb3",
+	    white: "fff",
+	    whitesmoke: "f5f5f5",
+	    yellow: "ff0",
+	    yellowgreen: "9acd32"
+	};
+
+	// Make it easy to access colors via `hexNames[hex]`
+	var hexNames = tinycolor.hexNames = flip(names);
+
+
+	// Utilities
+	// ---------
+
+	// `{ 'name1': 'val1' }` becomes `{ 'val1': 'name1' }`
+	function flip(o) {
+	    var flipped = { };
+	    for (var i in o) {
+	        if (o.hasOwnProperty(i)) {
+	            flipped[o[i]] = i;
+	        }
+	    }
+	    return flipped;
+	}
+
+	// Return a valid alpha value [0,1] with all invalid values being set to 1
+	function boundAlpha(a) {
+	    a = parseFloat(a);
+
+	    if (isNaN(a) || a < 0 || a > 1) {
+	        a = 1;
+	    }
+
+	    return a;
+	}
+
+	// Take input from [0, n] and return it as [0, 1]
+	function bound01(n, max) {
+	    if (isOnePointZero(n)) { n = "100%"; }
+
+	    var processPercent = isPercentage(n);
+	    n = mathMin(max, mathMax(0, parseFloat(n)));
+
+	    // Automatically convert percentage into number
+	    if (processPercent) {
+	        n = parseInt(n * max, 10) / 100;
+	    }
+
+	    // Handle floating point rounding errors
+	    if ((Math.abs(n - max) < 0.000001)) {
+	        return 1;
+	    }
+
+	    // Convert into [0, 1] range if it isn't already
+	    return (n % max) / parseFloat(max);
+	}
+
+	// Force a number between 0 and 1
+	function clamp01(val) {
+	    return mathMin(1, mathMax(0, val));
+	}
+
+	// Parse a base-16 hex value into a base-10 integer
+	function parseIntFromHex(val) {
+	    return parseInt(val, 16);
+	}
+
+	// Need to handle 1.0 as 100%, since once it is a number, there is no difference between it and 1
+	// <http://stackoverflow.com/questions/7422072/javascript-how-to-detect-number-as-a-decimal-including-1-0>
+	function isOnePointZero(n) {
+	    return typeof n == "string" && n.indexOf('.') != -1 && parseFloat(n) === 1;
+	}
+
+	// Check to see if string passed in is a percentage
+	function isPercentage(n) {
+	    return typeof n === "string" && n.indexOf('%') != -1;
+	}
+
+	// Force a hex value to have 2 characters
+	function pad2(c) {
+	    return c.length == 1 ? '0' + c : '' + c;
+	}
+
+	// Replace a decimal with it's percentage value
+	function convertToPercentage(n) {
+	    if (n <= 1) {
+	        n = (n * 100) + "%";
+	    }
+
+	    return n;
+	}
+
+	// Converts a decimal to a hex value
+	function convertDecimalToHex(d) {
+	    return Math.round(parseFloat(d) * 255).toString(16);
+	}
+	// Converts a hex value to a decimal
+	function convertHexToDecimal(h) {
+	    return (parseIntFromHex(h) / 255);
+	}
+
+	var matchers = (function() {
+
+	    // <http://www.w3.org/TR/css3-values/#integers>
+	    var CSS_INTEGER = "[-\\+]?\\d+%?";
+
+	    // <http://www.w3.org/TR/css3-values/#number-value>
+	    var CSS_NUMBER = "[-\\+]?\\d*\\.\\d+%?";
+
+	    // Allow positive/negative integer/number.  Don't capture the either/or, just the entire outcome.
+	    var CSS_UNIT = "(?:" + CSS_NUMBER + ")|(?:" + CSS_INTEGER + ")";
+
+	    // Actual matching.
+	    // Parentheses and commas are optional, but not required.
+	    // Whitespace can take the place of commas or opening paren
+	    var PERMISSIVE_MATCH3 = "[\\s|\\(]+(" + CSS_UNIT + ")[,|\\s]+(" + CSS_UNIT + ")[,|\\s]+(" + CSS_UNIT + ")\\s*\\)?";
+	    var PERMISSIVE_MATCH4 = "[\\s|\\(]+(" + CSS_UNIT + ")[,|\\s]+(" + CSS_UNIT + ")[,|\\s]+(" + CSS_UNIT + ")[,|\\s]+(" + CSS_UNIT + ")\\s*\\)?";
+
+	    return {
+	        CSS_UNIT: new RegExp(CSS_UNIT),
+	        rgb: new RegExp("rgb" + PERMISSIVE_MATCH3),
+	        rgba: new RegExp("rgba" + PERMISSIVE_MATCH4),
+	        hsl: new RegExp("hsl" + PERMISSIVE_MATCH3),
+	        hsla: new RegExp("hsla" + PERMISSIVE_MATCH4),
+	        hsv: new RegExp("hsv" + PERMISSIVE_MATCH3),
+	        hsva: new RegExp("hsva" + PERMISSIVE_MATCH4),
+	        hex3: /^#?([0-9a-fA-F]{1})([0-9a-fA-F]{1})([0-9a-fA-F]{1})$/,
+	        hex6: /^#?([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$/,
+	        hex4: /^#?([0-9a-fA-F]{1})([0-9a-fA-F]{1})([0-9a-fA-F]{1})([0-9a-fA-F]{1})$/,
+	        hex8: /^#?([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})$/
+	    };
+	})();
+
+	// `isValidCSSUnit`
+	// Take in a single string / number and check to see if it looks like a CSS unit
+	// (see `matchers` above for definition).
+	function isValidCSSUnit(color) {
+	    return !!matchers.CSS_UNIT.exec(color);
+	}
+
+	// `stringInputToObject`
+	// Permissive string parsing.  Take in a number of formats, and output an object
+	// based on detected format.  Returns `{ r, g, b }` or `{ h, s, l }` or `{ h, s, v}`
+	function stringInputToObject(color) {
+
+	    color = color.replace(trimLeft,'').replace(trimRight, '').toLowerCase();
+	    var named = false;
+	    if (names[color]) {
+	        color = names[color];
+	        named = true;
+	    }
+	    else if (color == 'transparent') {
+	        return { r: 0, g: 0, b: 0, a: 0, format: "name" };
+	    }
+
+	    // Try to match string input using regular expressions.
+	    // Keep most of the number bounding out of this function - don't worry about [0,1] or [0,100] or [0,360]
+	    // Just return an object and let the conversion functions handle that.
+	    // This way the result will be the same whether the tinycolor is initialized with string or object.
+	    var match;
+	    if ((match = matchers.rgb.exec(color))) {
+	        return { r: match[1], g: match[2], b: match[3] };
+	    }
+	    if ((match = matchers.rgba.exec(color))) {
+	        return { r: match[1], g: match[2], b: match[3], a: match[4] };
+	    }
+	    if ((match = matchers.hsl.exec(color))) {
+	        return { h: match[1], s: match[2], l: match[3] };
+	    }
+	    if ((match = matchers.hsla.exec(color))) {
+	        return { h: match[1], s: match[2], l: match[3], a: match[4] };
+	    }
+	    if ((match = matchers.hsv.exec(color))) {
+	        return { h: match[1], s: match[2], v: match[3] };
+	    }
+	    if ((match = matchers.hsva.exec(color))) {
+	        return { h: match[1], s: match[2], v: match[3], a: match[4] };
+	    }
+	    if ((match = matchers.hex8.exec(color))) {
+	        return {
+	            r: parseIntFromHex(match[1]),
+	            g: parseIntFromHex(match[2]),
+	            b: parseIntFromHex(match[3]),
+	            a: convertHexToDecimal(match[4]),
+	            format: named ? "name" : "hex8"
+	        };
+	    }
+	    if ((match = matchers.hex6.exec(color))) {
+	        return {
+	            r: parseIntFromHex(match[1]),
+	            g: parseIntFromHex(match[2]),
+	            b: parseIntFromHex(match[3]),
+	            format: named ? "name" : "hex"
+	        };
+	    }
+	    if ((match = matchers.hex4.exec(color))) {
+	        return {
+	            r: parseIntFromHex(match[1] + '' + match[1]),
+	            g: parseIntFromHex(match[2] + '' + match[2]),
+	            b: parseIntFromHex(match[3] + '' + match[3]),
+	            a: convertHexToDecimal(match[4] + '' + match[4]),
+	            format: named ? "name" : "hex8"
+	        };
+	    }
+	    if ((match = matchers.hex3.exec(color))) {
+	        return {
+	            r: parseIntFromHex(match[1] + '' + match[1]),
+	            g: parseIntFromHex(match[2] + '' + match[2]),
+	            b: parseIntFromHex(match[3] + '' + match[3]),
+	            format: named ? "name" : "hex"
+	        };
+	    }
+
+	    return false;
+	}
+
+	function validateWCAG2Parms(parms) {
+	    // return valid WCAG2 parms for isReadable.
+	    // If input parms are invalid, return {"level":"AA", "size":"small"}
+	    var level, size;
+	    parms = parms || {"level":"AA", "size":"small"};
+	    level = (parms.level || "AA").toUpperCase();
+	    size = (parms.size || "small").toLowerCase();
+	    if (level !== "AA" && level !== "AAA") {
+	        level = "AA";
+	    }
+	    if (size !== "small" && size !== "large") {
+	        size = "small";
+	    }
+	    return {"level":level, "size":size};
+	}
+
+	// Node: Export function
+	if (typeof module !== "undefined" && module.exports) {
+	    module.exports = tinycolor;
+	}
+	// AMD/requirejs: Define the module
+	else if (true) {
+	    !(__WEBPACK_AMD_DEFINE_RESULT__ = function () {return tinycolor;}.call(exports, __webpack_require__, exports, module), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	}
+	// Browser: Expose to window
+	else {
+	    window.tinycolor = tinycolor;
+	}
+
+	})(Math);
+
+
 /***/ }
-/******/ ]);
+
+/******/ });

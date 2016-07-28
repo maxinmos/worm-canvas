@@ -1,8 +1,26 @@
 <!DOCTYPE html>
 <head>
   <title>abc</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    .color-wrapper {
+      position: absolute;
+      top: 30px;
+      left: 50%;
+      padding: 20px;
+      transform: translateX(-50%);
+      background: white;
+    }
+  </style>
 </head>
 <body>
+  <div class="color-wrapper">
+    <label>Color:</label>
+    <input type="color" id="color" value="#ff0000">
+  </div>
   <canvas id="canvas" width="800" height="800"></canvas>
   <script src="./bundle.js"></script>
 </body>

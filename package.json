@@ -1,6 +1,6 @@
 {
   "name": "canvas-worm",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "The canvas worm which can follow a given path.",
   "main": "index.js",
   "scripts": {
@@ -23,7 +23,10 @@
   },
   "homepage": "https://github.com/caojs/worm-canvas#readme",
   "dependencies": {
-    "color": "0.11.3",
-    "lodash.range": "3.1.6"
+    "lodash.range": "3.1.6",
+    "tinycolor2": "1.4.1"
+  },
+  "devDependencies": {
+    "rxjs": "5.0.0-beta.10"
   }
 }
