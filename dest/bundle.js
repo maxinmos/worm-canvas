@@ -59,10 +59,11 @@
 	  var screenWidth = canvas.clientWidth;
 	  var screenHeight = canvas.clientHeight;
 
-	  var path = heart(30, 200);
-	  var w = range(15).map(function (i) {
-	    return worm(path, 20, 0, 0, utils.random(1, 2));
-	  });
+	  var path = heart(20, 100);
+	  var worms = range(15)
+	    .map(function (i) {
+	      return worm(0, 0, 20, utils.random(1, 1.5), path);
+	    });
 
 	  (function loop() {
 	    getAnimationFrame(function () {
@@ -70,9 +71,7 @@
 	      ctx.fillRect(0, 0, screenWidth, screenHeight);
 	      ctx.save();
 	      ctx.translate(screenWidth / 2, screenHeight / 2);
-	      w.forEach(function(wr) {
-	        wr(ctx);
-	      });
+	      worms.forEach(function(w) { w(ctx); });
 	      ctx.restore();
 	      loop();
 	    });
@@ -620,7 +619,7 @@
 	  ctx.fill();
 	};
 
-	function worm(path, n, x, y, dSpeed) {
+	function worm(x, y, n, speed, path) {
 	  var nPath = path.length;
 	  var partials = [];
 	  var approaching = roundRandom(0, nPath - 1);
@@ -638,7 +637,7 @@
 	      };
 
 	      if (i === 0) {
-	        dV = calculateDeltaVeclocity(p, point, dSpeed);
+	        dV = calculateDeltaVeclocity(p, point, speed);
 	        p.dx = dV.dx;
 	        p.dy = dV.dy;
 	        p.friction = Math.random() * 0.2 + 0.7;
@@ -655,22 +654,11 @@
 
 	    var point = path[approaching];
 	    var first = partials[0];
-	    var dV = calculateDeltaVeclocity(first, point, dSpeed);
-	    first.x += first.dx;
-	    first.y += first.dy;
+	    var dV = calculateDeltaVeclocity(first, point, speed);
 	    first.dx = (first.dx + dV.dx) * first.friction;
 	    first.dy = (first.dy + dV.dy) * first.friction;
-
-	    // FIXME: find out the relation of A and formula
-	    if (distance(first, point) < /* A */15) {
-	      approaching = Math.random() > 0.96 ?
-	        roundRandom(0, nPath - 1) :
-	        Math.random() > 0.96 ?
-	          (approaching - 1) :
-	          (approaching + 1) % nPath;
-
-	      if (approaching < 0) approaching += nPath;
-	    }
+	    first.x += first.dx;
+	    first.y += first.dy;
 	    renderPoint(ctx, first.x, first.y, first.radius);
 
 	    var p;
@@ -681,6 +669,16 @@
 	      next.x += (p.x - next.x) * 0.7;
 	      next.y += (p.y - next.y) * 0.7;
 	      renderPoint(ctx, next.x, next.y, next.radius);
+	    }
+
+	    if (distance(first, point) < /* A */10) {
+	      approaching = Math.random() > 0.96 ?
+	      roundRandom(0, nPath - 1) :
+	      Math.random() > 0.96 ?
+	        (approaching - 1) :
+	        (approaching + 1) % nPath;
+
+	      if (approaching < 0) approaching += nPath;
 	    }
 
 	    ctx.restore();

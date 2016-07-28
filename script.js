@@ -13,10 +13,11 @@ load(function () {
   var screenWidth = canvas.clientWidth;
   var screenHeight = canvas.clientHeight;
 
-  var path = heart(30, 200);
-  var w = range(15).map(function (i) {
-    return worm(path, 20, 0, 0, utils.random(1, 2));
-  });
+  var path = heart(20, 100);
+  var worms = range(15)
+    .map(function (i) {
+      return worm(0, 0, 20, utils.random(1, 1.5), path);
+    });
 
   (function loop() {
     getAnimationFrame(function () {
@@ -24,9 +25,7 @@ load(function () {
       ctx.fillRect(0, 0, screenWidth, screenHeight);
       ctx.save();
       ctx.translate(screenWidth / 2, screenHeight / 2);
-      w.forEach(function(wr) {
-        wr(ctx);
-      });
+      worms.forEach(function(w) { w(ctx); });
       ctx.restore();
       loop();
     });
