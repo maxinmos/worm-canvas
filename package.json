@@ -1,16 +1,16 @@
 {
-  "name": "heart-canvas",
-  "version": "1.0.0",
-  "description": "The heart graphic uses canvas.",
+  "name": "canvas-worm",
+  "version": "0.0.1",
+  "description": "The canvas worm which can follow a given path.",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack script.js dest/bundle.js --watch"
+    "build": "webpack app.js dest/bundle.js --watch"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/caojs/heart-canvas.git"
+    "url": "git+https://github.com/caojs/worm-canvas.git"
   },
   "keywords": [
     "canvas",
@@ -19,10 +19,11 @@
   "author": "caojs <caoo.dai@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/caojs/heart-canvas/issues"
+    "url": "https://github.com/caojs/worm-canvas/issues"
   },
-  "homepage": "https://github.com/caojs/heart-canvas#readme",
+  "homepage": "https://github.com/caojs/worm-canvas#readme",
   "dependencies": {
+    "color": "0.11.3",
     "lodash.range": "3.1.6"
   }
 }

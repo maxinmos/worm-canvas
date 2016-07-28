@@ -1,1 +1,1 @@
-# wave-canvas
+# worm-canvas

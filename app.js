@@ -1,11 +1,13 @@
+var colorify = require('color');
 var range = require('lodash.range');
-var engine = require('./engine.js');
+var engine = require('./lib/engine.js');
 var utils = require('./lib/utils.js');
 var heart = require('./lib/heart.js');
 var worm = require('./lib/worm.js');
 
 var load = engine.load;
 var getAnimationFrame = engine.getAnimationFrame;
+var random = utils.random;
 
 load(function () {
   var canvas = document.getElementById('canvas');
@@ -13,10 +15,11 @@ load(function () {
   var screenWidth = canvas.clientWidth;
   var screenHeight = canvas.clientHeight;
 
-  var path = heart(20, 100);
-  var worms = range(15)
+  var path = heart(30, 150);
+  var worms = range(20)
     .map(function (i) {
-      return worm(0, 0, 20, utils.random(1, 1.5), path);
+      var color = colorify('blue').rotate(random(0, 40)).hslString();
+      return worm(0, 0, 20, random(1, 2.5), color, path);
     });
 
   (function loop() {
