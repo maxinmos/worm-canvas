@@ -1,5 +1,5 @@
 var range = require('lodash.range');
-var vector = require('./vector');
+var vector = require('../../lib/vector');
 
 function pos(t, scale) {
   return {

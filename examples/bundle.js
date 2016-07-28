@@ -47,8 +47,8 @@
 	var colorify = __webpack_require__(1);
 	var range = __webpack_require__(13);
 	var engine = __webpack_require__(14);
-	var utils = __webpack_require__(15);
-	var heart = __webpack_require__(16);
+	var heart = __webpack_require__(15);
+	var utils = __webpack_require__(17);
 	var worm = __webpack_require__(18);
 
 	var load = engine.load;
@@ -4484,33 +4484,10 @@
 
 /***/ },
 /* 15 */
-/***/ function(module, exports) {
-
-	function random(min, max) {
-	  return min + Math.random() * (max - min);
-	}
-
-	function roundRandom(min, max) {
-	  return Math.round(random(min, max));
-	}
-
-	function increaseAngle(angle, alpha) {
-	  return (angle + alpha) % 360;
-	}
-
-	module.exports = {
-	  random: random,
-	  roundRandom: roundRandom,
-	  increaseAngle: increaseAngle
-	};
-
-
-/***/ },
-/* 16 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var range = __webpack_require__(13);
-	var vector = __webpack_require__(17);
+	var vector = __webpack_require__(16);
 
 	function pos(t, scale) {
 	  return {
@@ -4532,7 +4509,7 @@
 
 
 /***/ },
-/* 17 */
+/* 16 */
 /***/ function(module, exports) {
 
 	function toRad(r) {
@@ -4559,13 +4536,36 @@
 
 
 /***/ },
+/* 17 */
+/***/ function(module, exports) {
+
+	function random(min, max) {
+	  return min + Math.random() * (max - min);
+	}
+
+	function roundRandom(min, max) {
+	  return Math.round(random(min, max));
+	}
+
+	function increaseAngle(angle, alpha) {
+	  return (angle + alpha) % 360;
+	}
+
+	module.exports = {
+	  random: random,
+	  roundRandom: roundRandom,
+	  increaseAngle: increaseAngle
+	};
+
+
+/***/ },
 /* 18 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var colorify = __webpack_require__(1);
 	var range = __webpack_require__(13);
-	var vector = __webpack_require__(17);
-	var utils = __webpack_require__(15);
+	var vector = __webpack_require__(16);
+	var utils = __webpack_require__(17);
 
 	var toRad = vector.toRad;
 	var distance = vector.distance;

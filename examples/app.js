@@ -1,9 +1,9 @@
 var colorify = require('color');
 var range = require('lodash.range');
-var engine = require('./lib/engine.js');
-var utils = require('./lib/utils.js');
-var heart = require('./lib/heart.js');
-var worm = require('./lib/worm.js');
+var engine = require('./engine.js');
+var heart = require('./heart/heart.js');
+var utils = require('../lib/utils.js');
+var worm = require('../lib/worm.js');
 
 var load = engine.load;
 var getAnimationFrame = engine.getAnimationFrame;

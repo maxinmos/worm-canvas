@@ -4,7 +4,7 @@ var path = require('path');
 
 var server = http.createServer(function (req, res) {
   if (req.url === '/bundle.js') {
-    fs.createReadStream(path.resolve(__dirname, './dest/bundle.js'))
+    fs.createReadStream(path.resolve(__dirname, './bundle.js'))
       .pipe(res);
   }
   else {

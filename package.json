@@ -4,9 +4,9 @@
   "description": "The canvas worm which can follow a given path.",
   "main": "index.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node examples/server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack app.js dest/bundle.js --watch"
+    "build": "webpack examples/app.js examples/bundle.js --watch"
   },
   "repository": {
     "type": "git",
