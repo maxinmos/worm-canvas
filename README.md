@@ -38,6 +38,7 @@ var ctx = canvas.getContext('2d');
 # Examples:
 Run
 ```
+npm run build
 npm start
 ```
 Go to url localhost:3000
