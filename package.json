@@ -23,8 +23,7 @@
   },
   "homepage": "https://github.com/caojs/worm-canvas#readme",
   "dependencies": {
-    "lodash.range": "3.1.6",
-    "tinycolor2": "1.4.1"
+    "lodash.range": "3.1.6"
   },
   "devDependencies": {
     "rxjs": "5.0.0-beta.10"

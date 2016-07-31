@@ -1,18 +1,19 @@
-var tinycolor = require('tinycolor2');
 var range = require('lodash.range');
 var rx = require('rxjs/observable/fromEvent');
 var engine = require('./engine.js');
 var heart = require('./heart/heart.js');
 var utils = require('../lib/utils.js');
 var worm = require('../lib/worm.js');
+var color = require('../lib/color.js');
 
 var load = engine.load;
 var getAnimationFrame = engine.getAnimationFrame;
 var random = utils.random;
+var roundRandom = utils.roundRandom;
 
-function randomSpin(color) {
-  return tinycolor(color)
-  .spin(random(0, 40))
+function randomSpin(cl) {
+  return color(cl)
+  .spin(roundRandom(0, 40))
   .toString();
 }
 
@@ -31,7 +32,7 @@ load(function () {
   var screenHeight = window.innerHeight;
 
   var path = heart(30, 200);
-  var worms = bornWorms(20, 'red', path);
+  var worms = bornWorms(20, '#d47eff', path);
 
   canvas.width = screenWidth;
   canvas.height = screenHeight;
