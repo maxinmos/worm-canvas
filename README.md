@@ -1,5 +1,7 @@
 # Intro:
 Is inspired by http://js1k.com/2012-love/details/1071
+
+Example: http://codepen.io/caojs/pen/dXjALo
 # Install:
 ```
 npm install --save canvas-worm
