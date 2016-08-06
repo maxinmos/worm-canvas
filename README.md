@@ -35,6 +35,13 @@ var ctx = canvas.getContext('2d');
 
 ```
 
+Using `color` to change color and `path` to change path.
+```javascript
+worm
+  .color(newColor)
+  .path(newPath)
+```
+
 # Examples:
 Run
 ```
