@@ -1,6 +1,6 @@
 {
   "name": "canvas-worm",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "The canvas worm which can follow a given path.",
   "main": "index.js",
   "scripts": {
